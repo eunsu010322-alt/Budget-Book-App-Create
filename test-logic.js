@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,icsRule,icsEscape,icsFold,buildICS};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -143,19 +143,4 @@ eq('출금일 바꾸면 내일부터',L.recordFromOnEdit(old,{...old,payDay:5},'
 eq('카드→계좌 바꾸면 내일부터',L.recordFromOnEdit({...old,method:'card'},old,'2026-09-17'),'2026-09-18');
 eq('시작일이 더 늦으면 유지',L.recordFromOnEdit({...old,recordFrom:'2026-10-01'},{...old,payDay:5},'2026-09-17'),'2026-10-01');
 eq('카테고리 삭제 시 고정지출도 기타로',L.reassignFixed(fx,'a','z').map(f=>f.categoryId),['z','z','z','z']);
-console.log('[.ics]');
-eq('반복 규칙 10일',L.icsRule(10),'FREQ=MONTHLY;BYMONTHDAY=10');
-eq('반복 규칙 말일',L.icsRule(31),'FREQ=MONTHLY;BYMONTHDAY=-1');
-eq('반복 규칙 30일',L.icsRule(30),'FREQ=MONTHLY;BYMONTHDAY=28,29,30;BYSETPOS=-1');
-eq('쉼표 이스케이프',L.icsEscape('55,000원; a\\b'),'55\\,000원\\; a\\\\b');
-const longLine='SUMMARY:'+'가'.repeat(40);
-eq('줄 접기 75바이트 이하',L.icsFold(longLine).split('\r\n').every(l=>Buffer.byteLength(l)<=75),true);
-eq('줄 접기 후 원문 복원',L.icsFold(longLine).split('\r\n ').join(''),longLine);
-const ics=L.buildICS([F('id1',10,55000),F('id2',30,9900,'card'),F('off',1,1,'account',{active:false})],'2026-09-17','20260917T000000Z');
-eq('VEVENT 2개(중지 제외)',(ics.match(/BEGIN:VEVENT/g)||[]).length,2);
-eq('매월 반복 포함',ics.includes('RRULE:FREQ=MONTHLY;BYMONTHDAY=10'),true);
-eq('시작일 = 다음 출금일',ics.includes('DTSTART;VALUE=DATE:20260930'),true);
-eq('전날 오전 9시 알림',ics.includes('TRIGGER:-PT15H'),true);
-eq('CRLF 줄바꿈',ics.split('\n').every(l=>l===''||l.endsWith('\r')),true);
-eq('요약 문구',ics.includes('SUMMARY:id1 55\\,000원 출금'),true);
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);

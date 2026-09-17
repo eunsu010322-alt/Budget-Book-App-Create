@@ -297,11 +297,8 @@ button.list-row:active{opacity:.6}
 .cal-d.done .cal-dots i{background:var(--faint)}
 .cal-d.done .cal-m{color:var(--faint)}
 .cal-detail{margin:10px 4px 0;padding-top:12px;border-top:1px solid var(--line)}
-.ics-box{text-align:center;padding:0 16px}
-.ics-box .hint{margin-top:0}
 .date-chip select{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px}
 .method-hint{font-size:13px;color:var(--sub);text-align:center;margin-top:6px;flex:none}
-.steps{margin:0 4px 12px;padding-left:22px;font-size:15px;line-height:1.9}
 
 #toast{
   position:fixed;left:50%;z-index:60;bottom:calc(var(--safe-bottom) + 150px);transform:translate(-50%,20px);
@@ -330,7 +327,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '2.0.0';
+const APP_VERSION = '2.0.1';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -602,45 +599,6 @@ function reassignFixed(fixeds, fromId, toId) {
   return fixeds.filter(f => f.categoryId === fromId).map(f => ({ ...f, categoryId: toId }));
 }
 
-/* ---- .ics 내보내기: 매월 반복, 전날 오전 9시 알림 ---- */
-function icsRule(payDay) {
-  if (payDay >= 31) return 'FREQ=MONTHLY;BYMONTHDAY=-1';
-  if (payDay >= 29) { // 29·30일: 그 날짜가 없는 달은 말일
-    const days = []; for (let d = 28; d <= payDay; d++) days.push(d);
-    return `FREQ=MONTHLY;BYMONTHDAY=${days.join(',')};BYSETPOS=-1`;
-  }
-  return `FREQ=MONTHLY;BYMONTHDAY=${payDay}`;
-}
-function icsEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
-/** 75바이트마다 줄 접기 (한글이 잘리지 않게 글자 단위) */
-function icsFold(line) {
-  const out = []; let cur = '', bytes = 0;
-  for (const ch of line) {
-    const cp = ch.codePointAt(0);
-    const b = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
-    if (bytes + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; bytes = 0; }
-    cur += ch; bytes += b;
-  }
-  out.push(cur);
-  return out.join('\r\n ');
-}
-const icsDate = ymd => ymd.replace(/-/g, '');
-function buildICS(fixeds, today, stamp) {
-  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//gagyebu//fixed//KO', 'CALSCALE:GREGORIAN'];
-  fixeds.filter(isActiveFixed).forEach(f => {
-    const start = nextFixedDate(f.payDay, today);
-    const what = `${f.name} ${formatWon(f.amount)}원`;
-    L.push('BEGIN:VEVENT', `UID:${f.id}@gagyebu`, `DTSTAMP:${stamp}`,
-      `DTSTART;VALUE=DATE:${icsDate(start)}`, `DTEND;VALUE=DATE:${icsDate(addDays(start, 1))}`,
-      `RRULE:${icsRule(f.payDay)}`,
-      `SUMMARY:${icsEscape(`${what} ${f.method === 'card' ? '카드 결제' : '출금'}`)}`,
-      'TRANSP:TRANSPARENT',
-      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(`내일 ${what} ${f.method === 'card' ? '카드 결제' : '출금'}`)}`,
-      'TRIGGER:-PT15H', 'END:VALARM', 'END:VEVENT');
-  });
-  L.push('END:VCALENDAR');
-  return L.map(icsFold).join('\r\n') + '\r\n';
-}
 /*LOGIC-END*/
 
 /* =====================================================================
@@ -1158,8 +1116,7 @@ function renderFixed() {
         <div class="gauge-of num">${v.remainingCount ? `남은 ${v.remainingCount}건` : '이번 주기 출금이 모두 끝났어요'} · 주기 전체 ${formatWon(v.total)}원</div>
       </section>
       <div class="seg seg-page"><button data-fview="calendar" class="${cal ? 'on' : ''}">캘린더</button><button data-fview="list" class="${cal ? '' : 'on'}">리스트</button></div>
-      <section class="section" style="padding:${cal ? '14px 8px' : '14px 12px'}">${cal ? fixedCalendarHTML(v, today) : v.items.map(x => fixedRowHTML(x, 'list')).join('')}</section>
-      <div class="ics-box"><button class="link-btn" id="f-ics">아이폰 캘린더에 알림 추가</button><div class="hint">매월 반복 일정 · 출금 전날 오전 9시 알림</div></div>`;
+      <section class="section" style="padding:${cal ? '14px 8px' : '14px 12px'}">${cal ? fixedCalendarHTML(v, today) : v.items.map(x => fixedRowHTML(x, 'list')).join('')}</section>`;
   }
   const el = $('#view');
   el.querySelectorAll('[data-fixed-add]').forEach(b => b.onclick = () => openFixedEditor());
@@ -1174,8 +1131,6 @@ function renderFixed() {
     state.fixedSel = state.fixedSel === b.dataset.day ? null : b.dataset.day;
     renderFixed();
   });
-  const ics = $('#f-ics');
-  if (ics) ics.onclick = openICSGuide;
 }
 
 /* ---- 고정지출 추가 / 수정 (입력 화면과 같은 구성) ---- */
@@ -1286,33 +1241,6 @@ function openFixedEditor(fx) {
   paint();
 }
 
-/* ---- .ics 내보내기 ---- */
-function openICSGuide() {
-  const n = state.fixeds.filter(isActiveFixed).length;
-  const s = openSheet(`
-    <div class="choice-q">아이폰 캘린더에 추가</div>
-    <div class="choice-d">고정지출 ${n}개가 매월 반복 일정으로 들어가고, 출금 전날 오전 9시에 알림이 와요.</div>
-    <ol class="steps"><li>아래 버튼 → 공유 창에서 <b>파일에 저장</b></li><li>파일 앱에서 저장한 파일 열기</li><li><b>모두 추가</b> 누르기</li></ol>
-    <div class="hint" style="margin:0 4px 16px">항목을 바꾼 뒤 다시 추가하면 일정이 겹칠 수 있어요. 캘린더에서 기존 일정을 지우고 추가하세요.</div>
-    <div class="choice-btns"><button class="primary" id="ics-go">캘린더 파일 만들기</button><button class="secondary" data-close>닫기</button></div>`);
-  $('#ics-go', s.el).onclick = async () => { await exportICS(); s.close(); };
-}
-async function exportICS() {
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
-  const text = buildICS(state.fixeds, todayYMD(), stamp);
-  const name = 'gagyebu-fixed.ics';
-  const file = new File([text], name, { type: 'text/calendar' });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file] }); }
-    catch (e) { if (e.name !== 'AbortError') toast('내보내지 못했어요'); }
-    return;
-  }
-  const url = URL.createObjectURL(file);
-  const a = document.createElement('a');
-  a.href = url; a.download = name;
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10000);
-}
 
 /* =====================================================================
    화면: 준비 중 (3~5단계)
