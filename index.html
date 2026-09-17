@@ -273,6 +273,36 @@ button.list-row:active{opacity:.6}
 .choice-d{font-size:15px;color:var(--sub);margin:0 4px 16px}
 .choice-btns{display:grid;gap:8px}
 
+/* ---------- 고정지출 ---------- */
+.sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.sec-head .section-title{margin:0}
+.sec-head .link-btn{padding:4px 0;font-size:14px}
+.seg-page{margin:0 16px}
+.fx-right{text-align:right;flex:none}
+.fx-st{font-size:13px;font-weight:600;color:var(--accent);margin-top:1px}
+.fx-st.done{color:var(--faint);font-weight:500}
+.fx-row.done .tx-title,.fx-row.done .tx-amt{color:var(--faint)}
+.fx-row.done .cat-ico{opacity:.45}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px}
+.cal-w{text-align:center;font-size:12px;color:var(--faint);padding-bottom:4px}
+.cal-d{height:60px;min-width:0;border-radius:12px;display:flex;flex-direction:column;align-items:center;padding-top:5px;gap:3px;transition:background .15s}
+.cal-d:disabled{cursor:default}
+.cal-d.has:active,.cal-d.sel{background:var(--accent-weak)}
+.cal-n{font-size:14px;height:24px;min-width:24px;padding:0 5px;border-radius:12px;display:grid;place-items:center}
+.cal-d.done .cal-n{color:var(--sub)}
+.cal-d.today .cal-n{background:var(--text);color:var(--bg);font-weight:600}
+.cal-dots{display:flex;gap:2px;height:5px}
+.cal-dots i{width:5px;height:5px;border-radius:50%;background:var(--accent)}
+.cal-m{font-size:10px;font-weight:600;color:var(--accent);letter-spacing:-.04em;white-space:nowrap}
+.cal-d.done .cal-dots i{background:var(--faint)}
+.cal-d.done .cal-m{color:var(--faint)}
+.cal-detail{margin:10px 4px 0;padding-top:12px;border-top:1px solid var(--line)}
+.ics-box{text-align:center;padding:0 16px}
+.ics-box .hint{margin-top:0}
+.date-chip select{position:absolute;inset:0;opacity:0;width:100%;height:100%;font-size:16px}
+.method-hint{font-size:13px;color:var(--sub);text-align:center;margin-top:6px;flex:none}
+.steps{margin:0 4px 12px;padding-left:22px;font-size:15px;line-height:1.9}
+
 #toast{
   position:fixed;left:50%;z-index:60;bottom:calc(var(--safe-bottom) + 150px);transform:translate(-50%,20px);
   background:rgba(25,31,40,.92);color:#fff;padding:12px 20px;border-radius:24px;font-size:15px;
@@ -300,7 +330,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '1.2.1';
+const APP_VERSION = '2.0.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -378,7 +408,8 @@ function resolveKind(t, catMap, threshold) {
   if (classifyAuto(t, catMap) === 'special') return { kind: 'special', kindSource: 'auto', ask: false };
   if (t.amount >= threshold) {
     if (t.kindSource === 'asked') return { kind: t.kind, kindSource: 'asked', ask: false };
-    return { kind: 'living', kindSource: 'auto', ask: true };
+    // 고정지출 자동 기록 건은 묻지 않고 생활비 (v2.0.0 결정)
+    return { kind: 'living', kindSource: 'auto', ask: t.method !== 'fixed-auto' };
   }
   return { kind: 'living', kindSource: 'auto', ask: false };
 }
@@ -488,6 +519,128 @@ function keypadInput(cur, key) {
   if (next.length > 10) return cur;
   return next;
 }
+
+/* ---- 고정지출 (v2.0.0) ----
+   - 출금일이 그 달에 없으면 말일 (31 = 항상 말일)
+   - 주기마다 정확히 한 번 출금: 출금일 ≥ 25면 주기 시작 달, < 25면 다음 달
+   - 출금일 당일에 완료. 계좌 항목만 지출로 기록 (recordFrom 이후, 중복 없이) */
+function nextCycle(c) { return cycleOf(addDays(c.end, 1)); }
+function lastDayOf(y, m) { return new Date(y, m, 0).getDate(); }
+function payDateOn(y, m, payDay) { return `${y}-${pad(m)}-${pad(Math.min(payDay, lastDayOf(y, m)))}`; }
+function fixedDateInCycle(payDay, c) {
+  const [y, m] = c.start.split('-').map(Number);
+  if (payDay >= PAYDAY) return payDateOn(y, m, payDay);
+  const [ey, em] = c.end.split('-').map(Number);
+  return payDateOn(ey, em, payDay);
+}
+function payDayLabel(payDay) { return payDay >= 31 ? '말일' : `${payDay}일`; }
+/** 오늘 이후(오늘 제외) 첫 출금일 */
+function nextFixedDate(payDay, today) {
+  const c = cycleOf(today);
+  const d = fixedDateInCycle(payDay, c);
+  return d > today ? d : fixedDateInCycle(payDay, nextCycle(c));
+}
+const fixedKey = (fixedId, date) => `${fixedId}_${date}`;
+const isActiveFixed = f => f.active !== false;
+function byDateName(a, b) { return a.date.localeCompare(b.date) || a.f.name.localeCompare(b.f.name); }
+
+/** 고정지출 탭: 이번 주기 항목(출금일 순)과 남은 합계. 카드 항목도 합계에 포함 */
+function fixedCycleView(fixeds, today) {
+  const cycle = cycleOf(today);
+  const items = fixeds.filter(isActiveFixed).map(f => {
+    const date = fixedDateInCycle(f.payDay, cycle);
+    return { f, date, done: date <= today, dday: diffDays(today, date) };
+  }).sort(byDateName);
+  const rest = items.filter(x => !x.done);
+  return { cycle, items, total: sumAmount(items.map(x => x.f)), remaining: sumAmount(rest.map(x => x.f)), remainingCount: rest.length };
+}
+/** 홈: 다가오는 출금 n개 (주기를 넘어가도 됨) */
+function upcomingFixed(fixeds, today, n = 3) {
+  return fixeds.filter(isActiveFixed)
+    .map(f => { const date = nextFixedDate(f.payDay, today); return { f, date, dday: diffDays(today, date) }; })
+    .sort(byDateName).slice(0, n);
+}
+/** 지금 지출로 기록해야 할 계좌 출금 목록. doneKeys: 이미 기록한 fixedKey 집합 */
+function dueFixed(fixeds, doneKeys, today) {
+  const out = [];
+  fixeds.forEach(f => {
+    if (!isActiveFixed(f) || f.method !== 'account' || !f.recordFrom || f.recordFrom > today) return;
+    for (let c = cycleOf(f.recordFrom); c.start <= today; c = nextCycle(c)) {
+      const date = fixedDateInCycle(f.payDay, c);
+      const key = fixedKey(f.id, date);
+      if (date >= f.recordFrom && date <= today && !doneKeys.has(key)) out.push({ f, date, key });
+    }
+  });
+  return out.sort(byDateName);
+}
+/** 계좌 출금 → 지출 내역. 분류는 질문 없이 규칙대로 */
+function makeFixedTx(f, date, catMap, threshold, fallbackId, id, now) {
+  const categoryId = catMap[f.categoryId] ? f.categoryId : fallbackId;
+  return recomputeKind({
+    id, amount: f.amount, categoryId, merchant: f.name, date, time: '00:00',
+    method: 'fixed-auto', fixedId: f.id, status: 'active', eventId: null,
+    kind: 'living', kindSource: 'auto', createdAt: now, updatedAt: now,
+  }, catMap, threshold);
+}
+/** 새로 등록할 때 이번 주기 출금일이 이미 지났으면 그 날짜, 아니면 null */
+function passedThisCycle(payDay, today) {
+  const d = fixedDateInCycle(payDay, cycleOf(today));
+  return d <= today ? d : null;
+}
+/** 등록 시 기록 시작일. recordPast=true면 이번 주기의 지난 출금부터 */
+function recordFromOnCreate(payDay, today, recordPast) {
+  const passed = passedThisCycle(payDay, today);
+  return recordPast && passed ? passed : addDays(today, 1);
+}
+/** 수정 시 기록 시작일. 출금일·결제수단이 바뀌면 내일부터 (지난 출금을 새로 기록하지 않음) */
+function recordFromOnEdit(old, next, today) {
+  if (old.payDay === next.payDay && old.method === next.method) return old.recordFrom;
+  const tomorrow = addDays(today, 1);
+  return old.recordFrom && old.recordFrom > tomorrow ? old.recordFrom : tomorrow;
+}
+function reassignFixed(fixeds, fromId, toId) {
+  return fixeds.filter(f => f.categoryId === fromId).map(f => ({ ...f, categoryId: toId }));
+}
+
+/* ---- .ics 내보내기: 매월 반복, 전날 오전 9시 알림 ---- */
+function icsRule(payDay) {
+  if (payDay >= 31) return 'FREQ=MONTHLY;BYMONTHDAY=-1';
+  if (payDay >= 29) { // 29·30일: 그 날짜가 없는 달은 말일
+    const days = []; for (let d = 28; d <= payDay; d++) days.push(d);
+    return `FREQ=MONTHLY;BYMONTHDAY=${days.join(',')};BYSETPOS=-1`;
+  }
+  return `FREQ=MONTHLY;BYMONTHDAY=${payDay}`;
+}
+function icsEscape(s) { return String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n'); }
+/** 75바이트마다 줄 접기 (한글이 잘리지 않게 글자 단위) */
+function icsFold(line) {
+  const out = []; let cur = '', bytes = 0;
+  for (const ch of line) {
+    const cp = ch.codePointAt(0);
+    const b = cp < 0x80 ? 1 : cp < 0x800 ? 2 : cp < 0x10000 ? 3 : 4;
+    if (bytes + b > (out.length ? 74 : 75)) { out.push(cur); cur = ''; bytes = 0; }
+    cur += ch; bytes += b;
+  }
+  out.push(cur);
+  return out.join('\r\n ');
+}
+const icsDate = ymd => ymd.replace(/-/g, '');
+function buildICS(fixeds, today, stamp) {
+  const L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//gagyebu//fixed//KO', 'CALSCALE:GREGORIAN'];
+  fixeds.filter(isActiveFixed).forEach(f => {
+    const start = nextFixedDate(f.payDay, today);
+    const what = `${f.name} ${formatWon(f.amount)}원`;
+    L.push('BEGIN:VEVENT', `UID:${f.id}@gagyebu`, `DTSTAMP:${stamp}`,
+      `DTSTART;VALUE=DATE:${icsDate(start)}`, `DTEND;VALUE=DATE:${icsDate(addDays(start, 1))}`,
+      `RRULE:${icsRule(f.payDay)}`,
+      `SUMMARY:${icsEscape(`${what} ${f.method === 'card' ? '카드 결제' : '출금'}`)}`,
+      'TRANSP:TRANSPARENT',
+      'BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${icsEscape(`내일 ${what} ${f.method === 'card' ? '카드 결제' : '출금'}`)}`,
+      'TRIGGER:-PT15H', 'END:VALARM', 'END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.map(icsFold).join('\r\n') + '\r\n';
+}
 /*LOGIC-END*/
 
 /* =====================================================================
@@ -496,7 +649,7 @@ function keypadInput(cur, key) {
    - 기존 단계는 절대 수정하지 않는다 → 저장된 데이터가 그대로 유지됨
    ===================================================================== */
 const DB_NAME = 'gagyebu';
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 const FALLBACK_NAME = '기타';
 const MIGRATIONS = {
   1(db) {
@@ -541,7 +694,12 @@ const MIGRATIONS = {
   // v1.2.0에서 수동 변경 건을 정리하던 단계. v1.2.1에서 전환 기능을 되살리면서 아무것도 하지 않도록 바꿈
   // (버전 번호는 유지해야 하므로 단계 자체는 남겨 둠)
   3() {},
-  // 4(db, tx) { ... 2단계(정기지출)에서 추가 }
+  // v2.0.0: 고정지출. 기존 데이터는 건드리지 않고 저장소만 추가
+  4(db) {
+    db.createObjectStore('fixedExpenses', { keyPath: 'id' });
+    const fc = db.createObjectStore('fixedCompletions', { keyPath: 'key' });
+    fc.createIndex('fixedId', 'fixedId');
+  },
 };
 let db;
 function openDB() {
@@ -550,7 +708,11 @@ function openDB() {
     req.onupgradeneeded = e => {
       for (let v = e.oldVersion + 1; v <= DB_VERSION; v++) MIGRATIONS[v](req.result, req.transaction);
     };
-    req.onsuccess = () => resolve(req.result);
+    req.onsuccess = () => {
+      // 새 버전이 저장소를 열려고 하면 이 창은 연결을 닫고 새로고침 (업데이트가 막히지 않게)
+      req.result.onversionchange = () => { req.result.close(); location.reload(); };
+      resolve(req.result);
+    };
     req.onerror = () => reject(req.error);
     req.onblocked = () => toast('다른 창에서 앱이 열려 있어요. 닫고 다시 열어 주세요');
   });
@@ -568,12 +730,30 @@ function dbPutMany(name, list) {
     t.oncomplete = res; t.onerror = () => rej(t.error);
   });
 }
-/** 카테고리 삭제 + 내역 이동을 한 트랜잭션으로 (중간 실패 시 전부 취소됨) */
-function dbDeleteCategory(catId, movedTxs) {
+/** 카테고리 삭제 + 내역·고정지출 이동을 한 트랜잭션으로 (중간 실패 시 전부 취소됨) */
+function dbDeleteCategory(catId, movedTxs, movedFixeds) {
   return new Promise((res, rej) => {
-    const t = db.transaction(['categories', 'transactions'], 'readwrite');
+    const t = db.transaction(['categories', 'transactions', 'fixedExpenses'], 'readwrite');
     movedTxs.forEach(x => t.objectStore('transactions').put(x));
+    movedFixeds.forEach(x => t.objectStore('fixedExpenses').put(x));
     t.objectStore('categories').delete(catId);
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+/** 고정지출 자동 기록: 지출 내역 + 완료 표시를 한 트랜잭션으로 (중복 기록 방지) */
+function dbPutFixedRecords(recs) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['transactions', 'fixedCompletions'], 'readwrite');
+    recs.forEach(r => { t.objectStore('transactions').put(r.tx); t.objectStore('fixedCompletions').put(r.comp); });
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+/** 고정지출 삭제: 항목과 완료 표시만 지움. 이미 기록된 지출 내역은 남김 */
+function dbDeleteFixed(id, keys) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['fixedExpenses', 'fixedCompletions'], 'readwrite');
+    t.objectStore('fixedExpenses').delete(id);
+    keys.forEach(k => t.objectStore('fixedCompletions').delete(k));
     t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
@@ -592,6 +772,7 @@ const EXTRA_COLORS = ['#B5C98A', '#D4A373', '#88B0C8', '#C29BB8', '#9FC5B8', '#D
    ===================================================================== */
 const state = {
   cats: [], txs: [], budgets: {}, threshold: DEFAULT_THRESHOLD, installYMD: null,
+  fixeds: [], completions: [], fixedView: 'calendar', fixedSel: null,
   tab: 'home', filterCat: 'all', query: '',
 };
 const $ = (s, el = document) => el.querySelector(s);
@@ -753,6 +934,7 @@ function renderHome() {
   const b = budgetState(today);
   const s = homeStats(state.txs, state.cats, today, b.amount);
   const c = s.cycle, p = s.pace;
+  const up = upcomingFixed(state.fixeds, today);
 
   let delta = '지난 주기 기록이 없어요';
   if (s.change !== null) {
@@ -802,9 +984,16 @@ function renderHome() {
       <h2 class="section-title">생활비 카테고리</h2>
       <div class="donut-wrap">${donutSVG(s.catRows)}</div>
       ${rows || '<div class="empty">+ 버튼을 눌러 첫 지출을 기록해 보세요</div>'}
-    </section>`;
+    </section>
+    ${up.length ? `<section class="section">
+      <div class="sec-head"><h2 class="section-title">다가오는 출금</h2><button class="link-btn" id="go-fixed">전체 보기</button></div>
+      ${up.map(x => fixedRowHTML(x, 'home')).join('')}
+    </section>` : ''}`;
 
   $('#open-settings').onclick = () => openSettings();
+  const go = $('#go-fixed');
+  if (go) go.onclick = () => switchTab('fixed');
+  $('#view').querySelectorAll('[data-fixed]').forEach(r => r.onclick = () => openFixedEditor(state.fixeds.find(f => f.id === r.dataset.fixed)));
   if (p) bindPaceChart(s.series, b.amount, p, c);
   const v = $('#view');
   const inputBtn = v.querySelector('[data-budget-input]');
@@ -862,7 +1051,7 @@ function renderList() {
         return `<div class="tx ${t.status === 'canceled' ? 'canceled' : ''}" data-tx="${t.id}">
           <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
           <div class="tx-main"><div class="tx-title">${esc(t.merchant || c.name)}${kindLabels(t)}</div>
-            <div class="tx-sub"><span class="num">${t.time}</span> · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
+            <div class="tx-sub">${t.method === 'fixed-auto' ? '자동 기록' : `<span class="num">${t.time}</span>`} · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
           <div class="tx-amt num">${formatWon(t.amount)}원</div>
         </div>`;
       }).join('')}
@@ -886,10 +1075,249 @@ function renderList() {
 }
 
 /* =====================================================================
-   화면: 준비 중 (2~5단계)
+   고정지출: 자동 기록 (앱을 열 때 / 앱으로 돌아올 때)
+   ===================================================================== */
+let fixedRunning = null;
+/** 지난 계좌 출금을 지출로 기록. 기록한 건수를 돌려줌 */
+function processFixed({ silent = false } = {}) {
+  if (fixedRunning) return fixedRunning;
+  fixedRunning = (async () => {
+    const done = new Set(state.completions.map(c => c.key));
+    const due = dueFixed(state.fixeds, done, todayYMD());
+    if (!due.length) return 0;
+    const map = catMap(), fb = fallbackCat(), now = Date.now();
+    const recs = due.map(d => {
+      const tx = makeFixedTx(d.f, d.date, map, state.threshold, fb ? fb.id : d.f.categoryId, uid(), now);
+      return { tx, comp: { key: d.key, fixedId: d.f.id, date: d.date, transactionId: tx.id } };
+    });
+    try { await dbPutFixedRecords(recs); } catch (e) { toast('고정지출을 기록하지 못했어요'); return 0; }
+    recs.forEach(r => { state.txs.push(r.tx); state.completions.push(r.comp); });
+    if (!silent) toast(`고정지출 ${recs.length}건을 지출로 기록했어요`);
+    return recs.length;
+  })().finally(() => { fixedRunning = null; });
+  return fixedRunning;
+}
+
+/* =====================================================================
+   화면: 고정지출
+   ===================================================================== */
+const mdLabel = ymd => { const d = parseYMD(ymd); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]})`; };
+const ddayText = n => (n === 0 ? '오늘' : `D-${n}`);
+const calAmt = n => (n >= 10000 ? formatMan(n) : formatWon(n));
+const fixedSub = f => `매월 ${payDayLabel(f.payDay)} · ${f.method === 'card' ? '카드' : '계좌'}`;
+
+/** mode: 'list'(완료 여부 표시) / 'home'(날짜와 D-day) */
+function fixedRowHTML(x, mode) {
+  const f = x.f, c = catById(f.categoryId);
+  const sub = mode === 'home' ? `${mdLabel(x.date)} · ${ddayText(x.dday)}${f.method === 'card' ? ' · 카드' : ''}` : fixedSub(f);
+  const st = mode === 'home' ? '' : x.done ? '<div class="fx-st done">✓ 완료</div>' : `<div class="fx-st num">${ddayText(x.dday)}</div>`;
+  return `<div class="tx fx-row ${x.done ? 'done' : ''}" data-fixed="${f.id}">
+    <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
+    <div class="tx-main"><div class="tx-title">${esc(f.name)}</div><div class="tx-sub">${sub}</div></div>
+    <div class="fx-right"><div class="tx-amt num">${formatWon(f.amount)}원</div>${st}</div>
+  </div>`;
+}
+
+/** 급여 주기(25일~24일) 캘린더. 점 = 출금 항목, 지난 날은 ✓와 함께 흐리게 */
+function fixedCalendarHTML(v, today) {
+  const c = v.cycle, byDate = {};
+  v.items.forEach(x => (byDate[x.date] = byDate[x.date] || []).push(x));
+  let cells = WEEK.map(w => `<div class="cal-w">${w}</div>`).join('');
+  for (let i = 0; i < parseYMD(c.start).getDay(); i++) cells += '<div></div>';
+  for (let i = 0; i < cycleDays(c); i++) {
+    const d = addDays(c.start, i), [, m, dd] = d.split('-').map(Number);
+    const xs = byDate[d] || [], done = d <= today;
+    const cls = ['cal-d', d === today && 'today', xs.length && 'has', done && 'done', state.fixedSel === d && 'sel'].filter(Boolean).join(' ');
+    const mark = xs.length
+      ? `<span class="cal-dots">${xs.slice(0, 3).map(() => '<i></i>').join('')}</span><span class="cal-m num">${done ? '✓' : ''}${calAmt(sumAmount(xs.map(x => x.f)))}</span>`
+      : '';
+    cells += `<button class="${cls}" ${xs.length ? `data-day="${d}"` : 'disabled'} aria-label="${mdLabel(d)}${xs.length ? ` 출금 ${xs.length}건` : ''}"><span class="cal-n num">${i === 0 || dd === 1 ? `${m}.${dd}` : dd}</span>${mark}</button>`;
+  }
+  const sel = state.fixedSel && byDate[state.fixedSel];
+  const detail = sel
+    ? `<div class="cal-detail"><div class="day-head"><span>${mdLabel(state.fixedSel)}</span><span class="num">${formatWon(sumAmount(sel.map(x => x.f)))}원</span></div>${sel.map(x => fixedRowHTML(x, 'list')).join('')}</div>`
+    : '<div class="hint" style="text-align:center;margin-top:12px">점이 있는 날짜를 누르면 항목이 보여요</div>';
+  return `<div class="cal">${cells}</div>${detail}`;
+}
+
+function renderFixed() {
+  const today = todayYMD();
+  const v = fixedCycleView(state.fixeds, today), c = v.cycle;
+  const has = state.fixeds.length > 0;
+  const top = `<div class="topbar"><h1>고정지출</h1>${has ? '<button class="text-btn" data-fixed-add>추가</button>' : ''}</div>`;
+  if (!has) {
+    $('#view').innerHTML = `${top}
+      <div class="placeholder"><div class="big">📅</div><b>매달 나가는 돈을 등록하세요</b>통신비·보험·구독처럼 출금일이 정해진 지출<br>계좌 자동이체는 출금일에 지출로 기록돼요
+        <div style="margin:24px auto 0;max-width:240px"><button class="primary" data-fixed-add>고정지출 추가</button></div></div>`;
+  } else {
+    const cal = state.fixedView === 'calendar';
+    $('#view').innerHTML = `${top}
+      <section class="section">
+        <div class="gauge-head"><span>남은 고정지출</span><span class="num">${c.name} 주기 · ${shortDate(c.start)} – ${shortDate(c.end)}</span></div>
+        <div class="gauge-amt num">${formatWon(v.remaining)}<small>원</small></div>
+        <div class="gauge-of num">${v.remainingCount ? `남은 ${v.remainingCount}건` : '이번 주기 출금이 모두 끝났어요'} · 주기 전체 ${formatWon(v.total)}원</div>
+      </section>
+      <div class="seg seg-page"><button data-fview="calendar" class="${cal ? 'on' : ''}">캘린더</button><button data-fview="list" class="${cal ? '' : 'on'}">리스트</button></div>
+      <section class="section" style="padding:${cal ? '14px 8px' : '14px 12px'}">${cal ? fixedCalendarHTML(v, today) : v.items.map(x => fixedRowHTML(x, 'list')).join('')}</section>
+      <div class="ics-box"><button class="link-btn" id="f-ics">아이폰 캘린더에 알림 추가</button><div class="hint">매월 반복 일정 · 출금 전날 오전 9시 알림</div></div>`;
+  }
+  const el = $('#view');
+  el.querySelectorAll('[data-fixed-add]').forEach(b => b.onclick = () => openFixedEditor());
+  el.querySelectorAll('[data-fixed]').forEach(r => r.onclick = () => openFixedEditor(state.fixeds.find(f => f.id === r.dataset.fixed)));
+  el.querySelectorAll('[data-fview]').forEach(b => b.onclick = () => {
+    if (state.fixedView === b.dataset.fview) return;
+    state.fixedView = b.dataset.fview;
+    dbPut('meta', { key: 'fixedView', value: state.fixedView }).catch(() => {});
+    renderFixed();
+  });
+  el.querySelectorAll('[data-day]').forEach(b => b.onclick = () => {
+    state.fixedSel = state.fixedSel === b.dataset.day ? null : b.dataset.day;
+    renderFixed();
+  });
+  const ics = $('#f-ics');
+  if (ics) ics.onclick = openICSGuide;
+}
+
+/* ---- 고정지출 추가 / 수정 (입력 화면과 같은 구성) ---- */
+function openFixedEditor(fx) {
+  const editing = !!fx;
+  const today = todayYMD();
+  const f = {
+    amount: editing ? String(fx.amount) : '',
+    name: editing ? fx.name : '',
+    payDay: editing ? fx.payDay : Number(today.slice(8)),
+    method: editing ? fx.method : 'account',
+    cat: editing ? fx.categoryId : null,
+  };
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
+  const days = Array.from({ length: 31 }, (_, i) => i + 1);
+  const s = openSheet(`
+    <div class="sheet-head">
+      <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">${editing ? '고정지출 수정' : '고정지출 추가'}</div>
+      ${editing ? '<button class="text-btn danger" id="x-del">삭제</button>' : '<span style="width:44px"></span>'}
+    </div>
+    <div class="entry-body">
+      <label class="date-chip"><span id="x-day-label"></span> ▾
+        <select id="x-day" aria-label="출금일">${days.map(d => `<option value="${d}" ${d === f.payDay ? 'selected' : ''}>매월 ${payDayLabel(d)}</option>`).join('')}</select></label>
+      <div class="amount-display num" id="x-amt"></div>
+      <input id="x-name" class="memo" placeholder="이름 (예: 통신비)" maxlength="20" value="${esc(f.name)}" autocomplete="off">
+      <div class="seg"><button data-method="account">계좌 자동이체</button><button data-method="card">카드 결제</button></div>
+      <div class="method-hint" id="x-mhint"></div>
+      <div class="cat-grid" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
+        ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
+      </div>
+      <div class="keypad">
+        ${keys.map(k => `<button class="key num" data-key="${k}" aria-label="${k === 'back' ? '지우기 (길게 누르면 전체 삭제)' : k}">${k === 'back' ? ICON.del : k}</button>`).join('')}
+      </div>
+      <button class="primary" id="x-save">저장</button>
+    </div>`, { full: true });
+  const el = s.el, amtEl = $('#x-amt', el), saveBtn = $('#x-save', el);
+
+  const paint = () => {
+    const n = Number(f.amount || 0);
+    amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
+    amtEl.classList.toggle('zero', !n);
+    $('#x-day-label', el).textContent = `매월 ${payDayLabel(f.payDay)}`;
+    el.querySelectorAll('[data-method]').forEach(b => b.classList.toggle('on', b.dataset.method === f.method));
+    $('#x-mhint', el).textContent = f.method === 'account' ? '출금일에 지출로 자동 기록돼요' : '캘린더에만 표시돼요 · 지출은 결제 문자로 기록';
+    el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === f.cat));
+    const ok = n > 0 && f.name.trim() && f.cat;
+    saveBtn.disabled = !ok;
+    saveBtn.textContent = !n ? '금액을 입력하세요' : !f.name.trim() ? '이름을 입력하세요' : !f.cat ? '카테고리를 선택하세요' : '저장';
+  };
+  bindKeypad(el, key => {
+    const next = keypadInput(f.amount, key);
+    if (next === f.amount) return;
+    f.amount = next;
+    amtEl.classList.remove('bump'); void amtEl.offsetWidth; amtEl.classList.add('bump');
+    paint();
+  });
+  $('#x-day', el).onchange = e => { f.payDay = Number(e.target.value); paint(); };
+  $('#x-name', el).oninput = e => { f.name = e.target.value; paint(); };
+  el.querySelectorAll('[data-method]').forEach(b => b.onclick = () => { f.method = b.dataset.method; paint(); });
+  el.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { f.cat = b.dataset.cat; paint(); });
+  if (f.cat) requestAnimationFrame(() => { const on = el.querySelector(`[data-cat="${f.cat}"]`); on && on.scrollIntoView({ inline: 'center', block: 'nearest' }); });
+
+  let saving = false;
+  saveBtn.onclick = async () => {
+    if (saveBtn.disabled || saving) return;
+    saving = true;
+    try {
+      const now = Date.now();
+      const fields = { name: f.name.trim(), amount: Number(f.amount), payDay: f.payDay, method: f.method, categoryId: f.cat, updatedAt: now };
+      let rec;
+      if (editing) {
+        rec = { ...fx, ...fields };
+        rec.recordFrom = recordFromOnEdit(fx, rec, today);
+      } else {
+        let recordPast = false;
+        const passed = f.method === 'account' ? passedThisCycle(f.payDay, today) : null;
+        if (passed) {
+          const ans = await askChoice({
+            title: '이번 주기 출금도 기록할까요?',
+            desc: `${mdLabel(passed)} 출금일이 이미 지났어요. 이 출금을 직접 입력했다면 '기록 안 함'을 고르세요.`,
+            options: [{ label: '지출로 기록', value: true }, { label: '기록 안 함', value: false }],
+          });
+          if (ans === null) return; // 닫으면 저장하지 않고 입력 화면으로 돌아감
+          recordPast = ans;
+        }
+        rec = { id: uid(), ...fields, active: true, recordFrom: recordFromOnCreate(f.payDay, today, recordPast), createdAt: now };
+      }
+      await dbPut('fixedExpenses', rec);
+      const i = state.fixeds.findIndex(x => x.id === rec.id);
+      if (i >= 0) state.fixeds[i] = rec; else state.fixeds.push(rec);
+      s.close();
+      const n = await processFixed({ silent: true });
+      render();
+      toast(`${editing ? '수정했어요' : '등록했어요'}${n ? ` · 지출 ${n}건 기록` : ''}`);
+    } finally { saving = false; }
+  };
+  if (editing) {
+    $('#x-del', el).onclick = async () => {
+      if (!confirm(`'${fx.name}'을(를) 삭제할까요?\n이미 기록된 지출 내역은 그대로 남아요.`)) return;
+      const keysDone = state.completions.filter(c => c.fixedId === fx.id).map(c => c.key);
+      try { await dbDeleteFixed(fx.id, keysDone); } catch (e) { toast('삭제하지 못했어요. 다시 시도해 주세요'); return; }
+      state.fixeds = state.fixeds.filter(x => x.id !== fx.id);
+      state.completions = state.completions.filter(c => c.fixedId !== fx.id);
+      s.close(); render(); toast('삭제했어요');
+    };
+  }
+  paint();
+}
+
+/* ---- .ics 내보내기 ---- */
+function openICSGuide() {
+  const n = state.fixeds.filter(isActiveFixed).length;
+  const s = openSheet(`
+    <div class="choice-q">아이폰 캘린더에 추가</div>
+    <div class="choice-d">고정지출 ${n}개가 매월 반복 일정으로 들어가고, 출금 전날 오전 9시에 알림이 와요.</div>
+    <ol class="steps"><li>아래 버튼 → 공유 창에서 <b>파일에 저장</b></li><li>파일 앱에서 저장한 파일 열기</li><li><b>모두 추가</b> 누르기</li></ol>
+    <div class="hint" style="margin:0 4px 16px">항목을 바꾼 뒤 다시 추가하면 일정이 겹칠 수 있어요. 캘린더에서 기존 일정을 지우고 추가하세요.</div>
+    <div class="choice-btns"><button class="primary" id="ics-go">캘린더 파일 만들기</button><button class="secondary" data-close>닫기</button></div>`);
+  $('#ics-go', s.el).onclick = async () => { await exportICS(); s.close(); };
+}
+async function exportICS() {
+  const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+  const text = buildICS(state.fixeds, todayYMD(), stamp);
+  const name = 'gagyebu-fixed.ics';
+  const file = new File([text], name, { type: 'text/calendar' });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file] }); }
+    catch (e) { if (e.name !== 'AbortError') toast('내보내지 못했어요'); }
+    return;
+  }
+  const url = URL.createObjectURL(file);
+  const a = document.createElement('a');
+  a.href = url; a.download = name;
+  document.body.append(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+/* =====================================================================
+   화면: 준비 중 (3~5단계)
    ===================================================================== */
 const PLACEHOLDERS = {
-  fixed: ['📅', '고정지출', '2단계에서 만들어요'],
   goal: ['🎯', '목표 · 여행', '4단계에서 만들어요'],
   salary: ['💰', '급여', '5단계에서 만들어요'],
 };
@@ -905,6 +1333,7 @@ function renderPlaceholder(tab) {
 function render() {
   if (state.tab === 'home') renderHome();
   else if (state.tab === 'list') renderList();
+  else if (state.tab === 'fixed') renderFixed();
   else renderPlaceholder(state.tab);
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
 }
@@ -1239,23 +1668,29 @@ function openCategoryEditor(cat, done) {
     $('#c-del', el).onclick = async () => {
       const fb = fallbackCat();
       if (!fb) { toast(`'${FALLBACK_NAME}' 카테고리를 찾을 수 없어요`); return; }
-      const msg = count
-        ? `'${cat.name}'을(를) 삭제할까요?\n이 카테고리의 내역 ${count}건은 '${fb.name}'로 옮겨집니다.`
+      const fCount = state.fixeds.filter(f => f.categoryId === cat.id).length;
+      const parts = [count && `내역 ${count}건`, fCount && `고정지출 ${fCount}개`].filter(Boolean).join('과 ');
+      const josa = (a, b) => (parts.endsWith('건') ? a : b); // 건 → 은/을, 개 → 는/를
+      const msg = parts
+        ? `'${cat.name}'을(를) 삭제할까요?\n이 카테고리의 ${parts}${josa('은', '는')} '${fb.name}'로 옮겨집니다.`
         : `'${cat.name}'을(를) 삭제할까요?`;
       if (!confirm(msg)) return;
       const moved = reassignCategory(state.txs, cat.id, fb.id, catMap(), state.threshold);
+      const movedFixeds = reassignFixed(state.fixeds, cat.id, fb.id);
       try {
-        await dbDeleteCategory(cat.id, moved);
+        await dbDeleteCategory(cat.id, moved, movedFixeds);
       } catch (e) {
         toast('삭제하지 못했어요. 다시 시도해 주세요'); return;
       }
       const byId = Object.fromEntries(moved.map(t => [t.id, t]));
       state.txs = state.txs.map(t => byId[t.id] || t);
+      const fById = Object.fromEntries(movedFixeds.map(f => [f.id, f]));
+      state.fixeds = state.fixeds.map(f => fById[f.id] || f);
       state.cats = state.cats.filter(c => c.id !== cat.id);
       state.cats.forEach((c, k) => { c.order = k; });
       await dbPutMany('categories', state.cats);
       if (state.filterCat === cat.id) state.filterCat = 'all';
-      s.close(); done(); toast(count ? `삭제했어요 · 내역 ${count}건을 '${fb.name}'로 옮겼어요` : '삭제했어요');
+      s.close(); done(); toast(parts ? `삭제했어요 · ${parts}${josa('을', '를')} '${fb.name}'로 옮겼어요` : '삭제했어요');
     };
   }
 }
@@ -1289,13 +1724,22 @@ async function init() {
   (await dbAll('cycleBudgets')).forEach(b => { state.budgets[b.cycleId] = b; });
   const th = await dbGet('meta', 'specialThreshold');
   state.threshold = th ? th.value : DEFAULT_THRESHOLD;
+  state.fixeds = await dbAll('fixedExpenses');
+  state.completions = await dbAll('fixedCompletions');
+  const fv = await dbGet('meta', 'fixedView');
+  if (fv) state.fixedView = fv.value;
   const inst = await dbGet('meta', 'installedAt');
   const earliest = state.txs.map(t => t.date).sort()[0];
   state.installYMD = inst ? toYMD(new Date(inst.value)) : (earliest || todayYMD());
+  await processFixed();
   render();
 
-  // 날짜가 바뀌었을 수 있으니 앱으로 돌아올 때 다시 그리기
-  document.addEventListener('visibilitychange', () => { if (!document.hidden && !document.querySelector('.sheet,.page')) render(); });
+  // 날짜가 바뀌었을 수 있으니 앱으로 돌아올 때 지난 출금을 기록하고 다시 그리기
+  document.addEventListener('visibilitychange', async () => {
+    if (document.hidden) return;
+    await processFixed();
+    if (!document.querySelector('.sheet,.page')) render();
+  });
 }
 
 // 서비스워커: 새 버전이 설치되면 자동으로 새로고침
