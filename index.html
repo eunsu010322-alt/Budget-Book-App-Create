@@ -266,6 +266,9 @@ button.list-row:active{opacity:.6}
 .stats.two{grid-template-columns:1fr 1fr;margin-top:0}
 .label{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:1px}
 .label.special{color:#8A5CF6;background:rgba(138,92,246,.14)}
+.seg{display:flex;background:var(--press);border-radius:10px;padding:2px;margin-top:8px;flex:none}
+.seg button{flex:1;height:32px;border-radius:8px;font-size:14px;font-weight:500;color:var(--sub);transition:background .15s}
+.seg button.on{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .choice-q{font-size:19px;font-weight:700;margin:8px 4px 4px}
 .choice-d{font-size:15px;color:var(--sub);margin:0 4px 16px}
 .choice-btns{display:grid;gap:8px}
@@ -297,7 +300,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '1.2.0';
+const APP_VERSION = '1.2.1';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -362,7 +365,7 @@ function median(arr) {
 /* ---- 생활비 / 특별지출 분류 ----
    판정 순서: 1) 이벤트에 묶임 → 특별  2) 특별지출 카테고리 → 특별
              3) 기준 금액 이상 → 저장 때 한 번 질문  4) 나머지 → 생활비
-   kindSource: auto(규칙) / asked(질문에 답함) */
+   kindSource: auto(규칙) / asked(질문에 답함) / manual(수정 화면에서 직접 바꿈 — 항상 유지) */
 function classifyAuto(t, catMap) {
   if (t.eventId) return 'special';
   const c = catMap[t.categoryId];
@@ -371,6 +374,7 @@ function classifyAuto(t, catMap) {
 }
 /** 저장·재계산 시 분류 결정. ask=true면 화면에서 질문해야 함 */
 function resolveKind(t, catMap, threshold) {
+  if (t.kindSource === 'manual') return { kind: t.kind, kindSource: 'manual', ask: false };
   if (classifyAuto(t, catMap) === 'special') return { kind: 'special', kindSource: 'auto', ask: false };
   if (t.amount >= threshold) {
     if (t.kindSource === 'asked') return { kind: t.kind, kindSource: 'asked', ask: false };
@@ -534,24 +538,9 @@ const MIGRATIONS = {
       };
     };
   },
-  // v1.2.0: 수동 변경 기능 삭제 → 기존 수동 변경 건 정리
-  3(db, tx) {
-    tx.objectStore('meta').get('specialThreshold').onsuccess = e => {
-      const threshold = e.target.result ? e.target.result.value : DEFAULT_THRESHOLD;
-      tx.objectStore('categories').getAll().onsuccess = e2 => {
-        const map = Object.fromEntries(e2.target.result.map(c => [c.id, c]));
-        const ts = tx.objectStore('transactions');
-        ts.getAll().onsuccess = e3 => {
-          e3.target.result.filter(t => t.kindSource === 'manual').forEach(t => {
-            // 기준 금액 이상은 고른 분류를 '질문에 답함'으로 보존, 미만은 규칙대로 다시 판정
-            if (t.amount >= threshold && classifyAuto(t, map) === 'living') t.kindSource = 'asked';
-            else { t.kind = classifyAuto(t, map); t.kindSource = 'auto'; }
-            ts.put(t);
-          });
-        };
-      };
-    };
-  },
+  // v1.2.0에서 수동 변경 건을 정리하던 단계. v1.2.1에서 전환 기능을 되살리면서 아무것도 하지 않도록 바꿈
+  // (버전 번호는 유지해야 하므로 단계 자체는 남겨 둠)
+  3() {},
   // 4(db, tx) { ... 2단계(정기지출)에서 추가 }
 };
 let db;
@@ -1063,6 +1052,7 @@ function openEntry(tx) {
       <label class="date-chip"><span id="e-date-label"></span> ▾<input type="date" id="e-date" value="${f.date}"></label>
       <div class="amount-display num" id="e-amt"></div>
       <input id="e-merchant" class="memo" placeholder="어디서 썼나요? (선택)" maxlength="40" value="${esc(f.merchant)}" autocomplete="off">
+      ${editing ? `<div class="seg" id="e-kind"><button data-kind="living">생활비</button><button data-kind="special">특별지출</button></div>` : ''}
       <div class="cat-grid" id="e-cats" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
         ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
       </div>
@@ -1074,8 +1064,12 @@ function openEntry(tx) {
   const el = s.el;
   const amtEl = $('#e-amt', el), saveBtn = $('#e-save', el);
 
+  // 수정 화면의 생활비/특별지출 표시: 직접 바꾸기 전에는 현재 입력값 기준 판정 결과를 보여줌
+  const shownKind = () => resolveKind({ amount: Number(f.amount || 0), categoryId: f.cat, eventId: f.eventId, kind: f.kind, kindSource: f.kindSource }, catMap(), state.threshold).kind;
   const paint = () => {
     const n = Number(f.amount || 0);
+    const k = shownKind();
+    el.querySelectorAll('[data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === k));
     amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
     amtEl.classList.toggle('zero', !n);
     $('#e-date-label', el).textContent = dateLabel(f.date);
@@ -1091,6 +1085,10 @@ function openEntry(tx) {
     paint();
   });
   el.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { f.cat = b.dataset.cat; paint(); });
+  el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => {
+    if (b.dataset.kind === shownKind()) return;
+    f.kind = b.dataset.kind; f.kindSource = 'manual'; paint();
+  });
   const dateIn = $('#e-date', el);
   dateIn.onchange = () => { if (dateIn.value) { f.date = dateIn.value; paint(); } };
   $('#e-merchant', el).oninput = e => { f.merchant = e.target.value; };
