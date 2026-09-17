@@ -94,6 +94,7 @@ input{font:inherit;font-size:16px;color:var(--text)}
 .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:16px 16px 0}
 .stat{background:var(--card);border-radius:16px;padding:14px 12px}
 .stat .k{font-size:12px;color:var(--sub)}
+.stat .k2{font-size:11px;color:var(--faint);margin-top:1px}
 .stat .v{font-size:17px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat .v.neg{color:var(--danger)}
 .stat .v.muted{font-size:14px;font-weight:600;color:var(--accent)}
@@ -239,24 +240,32 @@ button.list-row:active{opacity:.6}
 .gauge-amt{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0}
 .gauge-amt small{font-size:22px;font-weight:600;margin-left:2px}
 .gauge-of{font-size:14px;color:var(--sub)}
-.gbar{position:relative;height:12px;border-radius:6px;background:var(--line);margin:28px 0 26px}
-.gbar i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--accent);transition:width .5s ease}
-.gbar .mark{position:absolute;top:-6px;bottom:-6px;width:2px;margin-left:-1px;background:var(--text);border-radius:1px}
-.gbar .mark b{position:absolute;top:22px;transform:translateX(-50%);font-size:12px;font-weight:500;color:var(--sub);white-space:nowrap}
-.gbar .spend{position:absolute;top:-22px;transform:translateX(-50%);font-size:12px;font-weight:700;white-space:nowrap}
-.pace{font-size:15px;line-height:1.5}
+.pace-chart{margin:14px 0 10px;touch-action:pan-y}
+.pace-chart svg{display:block;width:100%;height:auto;overflow:visible}
+.readout{font-size:13px;color:var(--sub);min-height:20px}
+.readout b{color:var(--text);font-weight:600}
+.pc-axis{font-size:11px;fill:var(--sub)}
+.pc-budget{font-size:11px;fill:var(--sub);font-weight:600}
+.pc-pace{stroke:var(--faint);stroke-width:1.5;stroke-dasharray:4 4;fill:none}
+.pc-base{stroke:var(--line);stroke-width:1}
+.pc-line{stroke-width:2.5;fill:none;stroke-linejoin:round;stroke-linecap:round}
+.pc-area{stroke:none;opacity:.12}
+.pc-dot{stroke:var(--card);stroke-width:2.5}
+.pc-scrub{stroke:var(--sub);stroke-width:1;opacity:0}
+.pc-scrub.on{opacity:.6}
+.pace{font-size:15px;line-height:1.55}
 .pace b{font-weight:700}
-.st-calm .gbar i{background:var(--accent)} .st-calm .pace b,.st-calm .spend{color:var(--accent)}
-.st-warn .gbar i{background:var(--warn)} .st-warn .pace b,.st-warn .spend{color:var(--warn)}
-.st-over .gbar i{background:var(--danger)} .st-over .pace b,.st-over .spend{color:var(--danger)}
+.pace .sub{color:var(--sub)}
+.st-calm{--st:var(--accent)} .st-warn{--st:var(--warn)} .st-over{--st:var(--danger)}
+.st-calm .pace b,.st-warn .pace b,.st-over .pace b{color:var(--st)}
+.pc-line{stroke:var(--st,var(--accent))} .pc-area,.pc-dot{fill:var(--st,var(--accent))}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--sub);margin-top:2px}
+.legend i{display:inline-block;width:16px;height:0;vertical-align:middle;margin-right:5px;border-top:2.5px solid var(--st,var(--accent))}
+.legend i.dash{border-top:1.5px dashed var(--faint)}
 .delta-line{font-size:13px;color:var(--sub);margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}
 .stats.two{grid-template-columns:1fr 1fr;margin-top:0}
 .label{display:inline-block;font-size:11px;font-weight:600;padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:1px}
 .label.special{color:#8A5CF6;background:rgba(138,92,246,.14)}
-.label.manual{color:var(--sub);background:var(--press)}
-.seg{display:flex;background:var(--press);border-radius:10px;padding:2px;margin-top:8px;flex:none}
-.seg button{flex:1;height:32px;border-radius:8px;font-size:14px;font-weight:500;color:var(--sub);transition:background .15s}
-.seg button.on{background:var(--card);color:var(--text);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
 .choice-q{font-size:19px;font-weight:700;margin:8px 4px 4px}
 .choice-d{font-size:15px;color:var(--sub);margin:0 4px 16px}
 .choice-btns{display:grid;gap:8px}
@@ -288,7 +297,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '1.1.0';
+const APP_VERSION = '1.2.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -302,6 +311,18 @@ function parseYMD(s) { const [y, m, d] = s.split('-').map(Number); return new Da
 function addDays(s, n) { const d = parseYMD(s); d.setDate(d.getDate() + n); return toYMD(d); }
 function diffDays(a, b) { return Math.round((parseYMD(b) - parseYMD(a)) / 86400000); } // b - a
 
+/** 특별지출 반기: 급여 주기 기준. 상반기 = 1~6월 주기(1.25~7.24), 하반기 = 7~12월 주기(7.25~다음 해 1.24) */
+function halfOf(ymd) {
+  const c = cycleOf(ymd);
+  const [y, m] = c.id.split('-').map(Number);
+  const first = m <= 6;
+  return {
+    id: `${y}-H${first ? 1 : 2}`,
+    start: first ? `${y}-01-25` : `${y}-07-25`,
+    end: first ? `${y}-07-24` : `${y + 1}-01-24`,
+    label: `${String(y).slice(2)}년 ${first ? '상' : '하'}반기`,
+  };
+}
 /** 날짜가 속한 급여 주기 (25일 ~ 다음 달 24일). id/label은 시작 월 기준 */
 function cycleOf(ymd) {
   let [y, m, d] = ymd.split('-').map(Number);
@@ -313,6 +334,7 @@ function cycleOf(ymd) {
     start: `${y}-${pad(m)}-${pad(PAYDAY)}`,
     end: `${ey}-${pad(em)}-${pad(PAYDAY - 1)}`,
     label: `${m}월 주기`,
+    name: `${m}월`,
   };
 }
 function prevCycle(c) { return cycleOf(addDays(c.start, -1)); }
@@ -340,7 +362,7 @@ function median(arr) {
 /* ---- 생활비 / 특별지출 분류 ----
    판정 순서: 1) 이벤트에 묶임 → 특별  2) 특별지출 카테고리 → 특별
              3) 기준 금액 이상 → 저장 때 한 번 질문  4) 나머지 → 생활비
-   kindSource: auto(규칙) / asked(질문에 답함) / manual(수정 화면에서 직접 바꿈) */
+   kindSource: auto(규칙) / asked(질문에 답함) */
 function classifyAuto(t, catMap) {
   if (t.eventId) return 'special';
   const c = catMap[t.categoryId];
@@ -349,7 +371,6 @@ function classifyAuto(t, catMap) {
 }
 /** 저장·재계산 시 분류 결정. ask=true면 화면에서 질문해야 함 */
 function resolveKind(t, catMap, threshold) {
-  if (t.kindSource === 'manual') return { kind: t.kind, kindSource: 'manual', ask: false };
   if (classifyAuto(t, catMap) === 'special') return { kind: 'special', kindSource: 'auto', ask: false };
   if (t.amount >= threshold) {
     if (t.kindSource === 'asked') return { kind: t.kind, kindSource: 'asked', ask: false };
@@ -403,11 +424,24 @@ function paceOf(spent, budget, today, c) {
   else if (diff > 3) { status = '약간 빠름'; level = 'warn'; }
   else if (diff > -5) { status = '계획대로'; level = 'calm'; }
   else { status = '여유'; level = 'calm'; }
+  const ideal = roundTo(budget * dayRate, 1000); // 오늘까지 쓰기로 한 금액 (천원 단위)
   return {
     dayPct: Math.round(dayRate * 100), spendPct: Math.round(spendRate * 100),
-    status, level, daysLeft,
+    status, level, daysLeft, total, elapsed, ideal, gap: spent - ideal,
     daily: Math.floor(Math.max(0, budget - spent) / daysLeft),
   };
+}
+
+/** 주기 시작일부터 오늘까지 날짜별 누적 생활비 [1일차, 2일차, ...] */
+function cumulativeSeries(txs, c, today) {
+  const n = diffDays(c.start, today) + 1;
+  const daily = new Array(n).fill(0);
+  txs.forEach(t => {
+    if (!isLiving(t) || !inRange(t.date, c.start, today)) return;
+    daily[diffDays(c.start, t.date)] += t.amount;
+  });
+  let acc = 0;
+  return daily.map(v => (acc += v));
 }
 
 /** 홈 화면 숫자 전부 계산. budget = 이번 주기 생활비 예산(없으면 null) */
@@ -431,7 +465,9 @@ function homeStats(txs, categories, today, budget) {
   return {
     cycle: c, catRows,
     living: livingTotal,
-    special: sumAmount(cur.filter(isSpecial)),
+    half: halfOf(today),
+    special: sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, halfOf(today).start, halfOf(today).end))),
+    series: cumulativeSeries(txs, c, today),
     today: sumAmount(cur.filter(t => t.date === today)),
     prevSame, change: changeRate(livingTotal, prevSame),
     daysLeft: cycleDays(c) - elapsed + 1,
@@ -456,7 +492,7 @@ function keypadInput(cur, key) {
    - 기존 단계는 절대 수정하지 않는다 → 저장된 데이터가 그대로 유지됨
    ===================================================================== */
 const DB_NAME = 'gagyebu';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 const FALLBACK_NAME = '기타';
 const MIGRATIONS = {
   1(db) {
@@ -498,7 +534,25 @@ const MIGRATIONS = {
       };
     };
   },
-  // 3(db, tx) { ... 2단계(정기지출)에서 추가 }
+  // v1.2.0: 수동 변경 기능 삭제 → 기존 수동 변경 건 정리
+  3(db, tx) {
+    tx.objectStore('meta').get('specialThreshold').onsuccess = e => {
+      const threshold = e.target.result ? e.target.result.value : DEFAULT_THRESHOLD;
+      tx.objectStore('categories').getAll().onsuccess = e2 => {
+        const map = Object.fromEntries(e2.target.result.map(c => [c.id, c]));
+        const ts = tx.objectStore('transactions');
+        ts.getAll().onsuccess = e3 => {
+          e3.target.result.filter(t => t.kindSource === 'manual').forEach(t => {
+            // 기준 금액 이상은 고른 분류를 '질문에 답함'으로 보존, 미만은 규칙대로 다시 판정
+            if (t.amount >= threshold && classifyAuto(t, map) === 'living') t.kindSource = 'asked';
+            else { t.kind = classifyAuto(t, map); t.kindSource = 'auto'; }
+            ts.put(t);
+          });
+        };
+      };
+    };
+  },
+  // 4(db, tx) { ... 2단계(정기지출)에서 추가 }
 };
 let db;
 function openDB() {
@@ -642,6 +696,69 @@ function budgetCardHTML(b) {
     <div class="btns"><button class="btn-ghost num" data-budget-minus>−5%</button><button class="btn-fill" data-budget-confirm>확정</button></div></div>`;
 }
 
+/* ---- 누적 지출 선 그래프 ----
+   실선 = 주기 시작부터 오늘까지 누적 생활비, 점선 = 예산을 날짜만큼 고르게 쓸 때의 누적액 */
+const PC = { W: 320, H: 150, top: 16, bottom: 124 };
+function pcScale(series, budget, total) {
+  const ymax = Math.max(budget, series[series.length - 1] || 0) * 1.08 || 1;
+  return {
+    x: day => day / total * PC.W,
+    y: v => PC.bottom - v / ymax * (PC.bottom - PC.top),
+  };
+}
+function paceChartSVG(series, budget, p, c) {
+  const { x, y } = pcScale(series, budget, p.total);
+  const pts = [[0, y(0)], ...series.map((v, i) => [x(i + 1), y(v)])];
+  const line = pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('');
+  const area = `${line}L${pts[pts.length - 1][0].toFixed(1)},${PC.bottom}L0,${PC.bottom}Z`;
+  const [tx, ty] = pts[pts.length - 1];
+  const edge = tx / PC.W;
+  const lab = (xx, anchor, text) => `<text x="${xx}" y="${PC.H - 6}" text-anchor="${anchor}" class="pc-axis num">${text}</text>`;
+  return `<svg viewBox="0 0 ${PC.W} ${PC.H}" role="img" aria-label="누적 생활비 ${formatWon(series[series.length - 1] || 0)}원, 예산 페이스 기준 ${formatWon(p.ideal)}원">
+    <line x1="0" x2="${PC.W}" y1="${PC.bottom}" y2="${PC.bottom}" class="pc-base"/>
+    <line x1="0" y1="${y(0)}" x2="${PC.W}" y2="${y(budget)}" class="pc-pace"/>
+    <text x="${PC.W}" y="${y(budget) - 6}" text-anchor="end" class="pc-budget num">예산 ${formatMan(budget)}</text>
+    <path d="${area}" class="pc-area"/>
+    <path d="${line}" class="pc-line"/>
+    <line id="pc-scrub" x1="0" x2="0" y1="${PC.top}" y2="${PC.bottom}" class="pc-scrub"/>
+    <circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="5" class="pc-dot" id="pc-dot"/>
+    ${edge > 0.16 ? lab(0, 'start', shortDate(c.start)) : ''}
+    ${lab(Math.min(PC.W - 14, Math.max(14, tx)), 'middle', '오늘')}
+    ${edge < 0.84 ? lab(PC.W, 'end', shortDate(c.end)) : ''}
+    <rect x="0" y="0" width="${PC.W}" height="${PC.H}" fill="transparent" id="pc-hit"/>
+  </svg>`;
+}
+/** 손가락으로 그래프를 훑으면 그날의 누적액·적정액을 위 한 줄에 보여줌. 손을 떼면 오늘로 돌아감 */
+function bindPaceChart(series, budget, p, c) {
+  const svg = $('#pace-chart svg'), hit = $('#pc-hit'), scrub = $('#pc-scrub'), dot = $('#pc-dot'), out = $('#pc-readout');
+  if (!svg) return;
+  const { x, y } = pcScale(series, budget, p.total);
+  const show = i => { // i: 0부터 시작하는 날짜 인덱스
+    const v = series[i], ideal = roundTo(budget * (i + 1) / p.total, 1000);
+    const isToday = i === series.length - 1;
+    out.innerHTML = `${isToday ? '오늘' : shortDate(addDays(c.start, i))} · 누적 <b>${formatWon(v)}원</b> · 적정 ${formatWon(ideal)}원`;
+    dot.setAttribute('cx', x(i + 1)); dot.setAttribute('cy', y(v));
+    scrub.setAttribute('x1', x(i + 1)); scrub.setAttribute('x2', x(i + 1));
+    scrub.classList.toggle('on', !isToday);
+  };
+  const at = e => {
+    const r = svg.getBoundingClientRect();
+    const day = Math.round((e.clientX - r.left) / r.width * p.total);
+    show(Math.max(0, Math.min(series.length - 1, day - 1)));
+  };
+  hit.addEventListener('pointerdown', at);
+  hit.addEventListener('pointermove', e => { if (e.pressure > 0 || e.pointerType === 'mouse') at(e); });
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => hit.addEventListener(ev, () => show(series.length - 1)));
+  show(series.length - 1);
+}
+function gapText(gap) {
+  if (Math.abs(gap) < 1000) return '적정 금액만큼 썼어요';
+  const g = Math.abs(gap);
+  // 10만원 이상은 만원 단위, 1~10만원은 천원 단위(예: 7.5만원), 1만원 미만은 원 단위
+  const amt = g >= 100000 ? `${formatWon(Math.round(g / 10000))}만원` : g >= 10000 ? `${formatMan(g)}원` : `${formatWon(g)}원`;
+  return gap > 0 ? `적정보다 ${amt} 더 썼어요` : `적정보다 ${amt} 덜 썼어요`;
+}
+
 function renderHome() {
   const today = todayYMD();
   const b = budgetState(today);
@@ -657,19 +774,19 @@ function renderHome() {
 
   const gauge = p ? `
     <section class="section st-${p.level}">
-      <div class="gauge-head"><span>생활비 · ${c.label}</span>${b.provisional ? '<span class="tag">제안값 적용 중</span>' : `<span class="num">${shortDate(c.start)} – ${shortDate(c.end)}</span>`}</div>
+      <div class="gauge-head"><span>${c.name} 생활비</span>${b.provisional ? '<span class="tag">제안값 적용 중</span>' : `<span class="num">예산 ${formatMan(b.amount)}${b.amount >= 10000 ? '원' : ''}</span>`}</div>
       <div class="gauge-amt num">${formatWon(s.living)}<small>원</small></div>
-      <div class="gauge-of num">예산 ${formatWon(b.amount)}원</div>
-      <div class="gbar" role="img" aria-label="지출 ${p.spendPct}%, 오늘 기준선 ${p.dayPct}%">
-        <i style="width:${Math.min(100, p.spendPct)}%"></i>
-        <span class="spend num" style="left:${Math.min(94, Math.max(6, p.spendPct))}%">지출 ${p.spendPct}%</span>
-        <span class="mark" style="left:${p.dayPct}%"><b class="num">오늘 ${p.dayPct}%</b></span>
+      <div class="gauge-of num">${b.provisional ? `예산 ${formatWon(b.amount)}원 · ` : ''}${shortDate(c.start)} – ${shortDate(c.end)}</div>
+      <div class="pace-chart" id="pace-chart">
+        <div class="readout num" id="pc-readout"></div>
+        ${paceChartSVG(s.series, b.amount, p, c)}
+        <div class="legend"><span><i></i>누적 지출</span><span><i class="dash"></i>예산 페이스</span></div>
       </div>
-      <div class="pace"><b>${p.status}</b> · 남은 ${p.daysLeft}일 하루 <span class="num">${formatWon(p.daily)}원</span></div>
+      <div class="pace"><b>${p.status}</b> · ${gapText(p.gap)}<br><span class="sub">남은 ${p.daysLeft}일 · 하루 <span class="num">${formatWon(p.daily)}원</span></span></div>
       <div class="delta-line">${delta}</div>
     </section>` : `
     <section class="section">
-      <div class="gauge-head"><span>생활비 · ${c.label}</span><span class="num">${shortDate(c.start)} – ${shortDate(c.end)}</span></div>
+      <div class="gauge-head"><span>${c.name} 생활비</span><span class="num">${shortDate(c.start)} – ${shortDate(c.end)}</span></div>
       <div class="gauge-amt num">${formatWon(s.living)}<small>원</small></div>
       <div class="gauge-of">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</div>
       <div class="delta-line">${delta}</div>
@@ -689,8 +806,8 @@ function renderHome() {
     ${budgetCardHTML(b)}
     ${gauge}
     <div class="stats two">
-      <div class="stat"><div class="k">특별지출 · 이번 주기</div><div class="v num">${formatWon(s.special)}원</div></div>
-      <div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div></div>
+      <div class="stat"><div class="k">특별지출 · ${s.half.label}</div><div class="v num">${formatWon(s.special)}원</div><div class="k2 num">${shortDate(s.half.start)} – ${shortDate(s.half.end)}</div></div>
+      <div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div><div class="k2">생활비 + 특별지출</div></div>
     </div>
     <section class="section">
       <h2 class="section-title">생활비 카테고리</h2>
@@ -699,6 +816,7 @@ function renderHome() {
     </section>`;
 
   $('#open-settings').onclick = () => openSettings();
+  if (p) bindPaceChart(s.series, b.amount, p, c);
   const v = $('#view');
   const inputBtn = v.querySelector('[data-budget-input]');
   if (inputBtn) inputBtn.onclick = () => openBudgetInput(b);
@@ -716,7 +834,7 @@ function renderHome() {
 
 function openBudgetInput(b) {
   openAmountSheet({
-    title: `${b.cycle.label} 생활비 예산`,
+    title: `${b.cycle.name} 생활비 예산`,
     initial: b.amount || 0,
     hint: b.suggestion ? `최근 ${b.suggestion.count}개 주기 중앙값 ${formatMan(b.suggestion.median)}원` : '이번 주기에 생활비로 쓸 금액',
     onSave: async n => {
@@ -732,7 +850,6 @@ function openBudgetInput(b) {
 function kindLabels(t) {
   let s = '';
   if (t.kind === 'special') s += '<span class="label special">특별</span>';
-  if (t.kindSource === 'manual') s += '<span class="label manual">수동 변경</span>';
   return s;
 }
 function renderList() {
@@ -933,6 +1050,7 @@ function openEntry(tx) {
     merchant: editing ? (tx.merchant || '') : '',
     kind: editing ? (tx.kind || 'living') : 'living',
     kindSource: editing ? (tx.kindSource || 'auto') : 'auto',
+    eventId: editing ? tx.eventId : null,
   };
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
   const s = openSheet(`
@@ -945,7 +1063,6 @@ function openEntry(tx) {
       <label class="date-chip"><span id="e-date-label"></span> ▾<input type="date" id="e-date" value="${f.date}"></label>
       <div class="amount-display num" id="e-amt"></div>
       <input id="e-merchant" class="memo" placeholder="어디서 썼나요? (선택)" maxlength="40" value="${esc(f.merchant)}" autocomplete="off">
-      ${editing ? `<div class="seg" id="e-kind"><button data-kind="living">생활비</button><button data-kind="special">특별지출</button></div>` : ''}
       <div class="cat-grid" id="e-cats" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
         ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
       </div>
@@ -957,20 +1074,12 @@ function openEntry(tx) {
   const el = s.el;
   const amtEl = $('#e-amt', el), saveBtn = $('#e-save', el);
 
-  // 수정 화면의 생활비/특별지출 표시: 직접 바꾸기 전에는 현재 입력값 기준 자동 판정을 보여줌
-  const shownKind = () => {
-    if (f.kindSource === 'manual') return f.kind;
-    const r = resolveKind({ amount: Number(f.amount || 0), categoryId: f.cat, eventId: editing ? tx.eventId : null, kind: f.kind, kindSource: f.kindSource }, catMap(), state.threshold);
-    return r.kind;
-  };
   const paint = () => {
     const n = Number(f.amount || 0);
     amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
     amtEl.classList.toggle('zero', !n);
     $('#e-date-label', el).textContent = dateLabel(f.date);
     el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === f.cat));
-    const k = shownKind();
-    el.querySelectorAll('[data-kind]').forEach(b => b.classList.toggle('on', b.dataset.kind === k));
     saveBtn.disabled = !(n > 0 && f.cat);
     saveBtn.textContent = !n ? '금액을 입력하세요' : !f.cat ? '카테고리를 선택하세요' : '저장';
   };
@@ -982,10 +1091,6 @@ function openEntry(tx) {
     paint();
   });
   el.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { f.cat = b.dataset.cat; paint(); });
-  el.querySelectorAll('[data-kind]').forEach(b => b.onclick = () => {
-    if (b.dataset.kind === shownKind()) return;
-    f.kind = b.dataset.kind; f.kindSource = 'manual'; paint();
-  });
   const dateIn = $('#e-date', el);
   dateIn.onchange = () => { if (dateIn.value) { f.date = dateIn.value; paint(); } };
   $('#e-merchant', el).oninput = e => { f.merchant = e.target.value; };
@@ -1074,7 +1179,7 @@ function openSettings() {
     });
   };
   $('#s-budget', el).onclick = () => openAmountSheet({
-    title: `${cycleOf(todayYMD()).label} 생활비 예산`,
+    title: `${cycleOf(todayYMD()).name} 생활비 예산`,
     initial: budgetState().amount || 0,
     hint: (() => { const sg = budgetState().suggestion; return sg ? `최근 ${sg.count}개 주기 중앙값 ${formatMan(sg.median)}원` : '이번 주기에 생활비로 쓸 금액'; })(),
     onSave: async n => { const b = budgetState(); await saveBudget(b.cycle.id, n, true, b.suggestion ? b.suggestion.amount : null); paintTop(); toast('생활비 예산을 저장했어요'); },

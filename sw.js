@@ -1,5 +1,5 @@
 // 코드를 고칠 때마다 이 숫자를 올리면 아이폰에 새 버전이 반영됩니다.
-const CACHE_VERSION = 'v1.1.0';
+const CACHE_VERSION = 'v1.2.0';
 const CACHE = `gagyebu-${CACHE_VERSION}`;
 const FILES = ['./', './index.html', './manifest.json', './icon-180.png', './icon-192.png', './icon-512.png'];
 
