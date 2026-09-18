@@ -1,11 +1,8 @@
 {
   "name": "가계부",
   "short_name": "가계부",
-  "lang": "ko",
   "start_url": "./",
-  "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
   "background_color": "#F2F4F6",
   "theme_color": "#F2F4F6",
   "icons": [

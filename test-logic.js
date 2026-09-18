@@ -1,6 +1,6 @@
-const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,'index.html'),'utf8');
+const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -116,7 +116,7 @@ eq('남은 합계(카드 포함, 중지 제외)',[v.remaining,v.remainingCount,v
 eq('출금일 당일은 완료',L.fixedCycleView([F('x',17,1)],'2026-09-17').items[0].done,true);
 eq('D-day',v.items[2].dday,3);
 eq('다가오는 출금 3개(다음 주기 포함)',L.upcomingFixed([...fx,F('관리',25,1)],'2026-09-17').map(x=>[x.f.id,x.date]),[['보험','2026-09-20'],['관리','2026-09-25'],['구독','2026-09-30']]);
-console.log('[고정지출: 자동 기록]');
+console.log('[고정지출: 자동 기록 (v2 호환)]');
 const due=L.dueFixed(fx,new Set(),'2026-09-17');
 eq('카드·중지 항목은 기록 안 함',due.every(d=>d.f.method==='account'&&d.f.id!=='월세'),true);
 eq('기록 시작일부터 밀린 출금 전부',L.dueFixed([F('통신',10,1,'account',{recordFrom:'2026-07-01'})],new Set(),'2026-09-17').map(d=>d.date),['2026-07-10','2026-08-10','2026-09-10']);
@@ -143,4 +143,117 @@ eq('출금일 바꾸면 내일부터',L.recordFromOnEdit(old,{...old,payDay:5},'
 eq('카드→계좌 바꾸면 내일부터',L.recordFromOnEdit({...old,method:'card'},old,'2026-09-17'),'2026-09-18');
 eq('시작일이 더 늦으면 유지',L.recordFromOnEdit({...old,recordFrom:'2026-10-01'},{...old,payDay:5},'2026-09-17'),'2026-10-01');
 eq('카테고리 삭제 시 고정지출도 기타로',L.reassignFixed(fx,'a','z').map(f=>f.categoryId),['z','z','z','z']);
+console.log('[엑셀 날짜·시각]');
+eq('serial 46282 → 2026-09-17', L.excelDate(46282), '2026-09-17');
+eq('serial 1 → 1899-12-31', L.excelDate(1), '1899-12-31');
+eq('윤년 2028-02-29', L.excelDate(46812), '2028-02-29');
+eq('0.5 → 12:00', L.excelTime(0.5), '12:00');
+eq('17:16:49 소수', L.excelTime((17 * 3600 + 16 * 60 + 49) / 86400), '17:16');
+eq('초까지', L.cellSec((17 * 3600 + 16 * 60 + 49) / 86400), '17:16:49');
+eq('자정', L.excelTime(0), '00:00');
+eq('문자열 날짜도 받음', L.cellDate('2026-09-17 00:00:00'), '2026-09-17');
+eq('문자열 시각도 받음', [L.cellTime('17:16:49'), L.cellSec('17:16:49')], ['17:16', '17:16:49']);
+eq('빈 시각', [L.cellTime(null), L.cellSec(null)], ['00:00', '00:00:00']);
+eq('금액: 쉼표·원 제거', [L.cellNum('-4,900원'), L.cellNum(-4900), L.cellNum(null), L.cellNum('')], [-4900, -4900, 0, 0]);
+
+console.log('[중복 방지 키]');
+const IR = (o = {}) => ({ date: '2026-08-14', time: '07:00', sec: '07:00:12', type: '지출', cat1: '교통', cat2: '택시', content: '주식회사 티머니', amount: -5600, currency: 'KRW', method: '카카오페이 간편결제', memo: '', ...o });
+eq('초가 키에 들어감', L.rowKey(IR()).includes('07:00:12'), true);
+eq('같은 분 다른 초는 다른 키', L.rowKey(IR()) !== L.rowKey(IR({ sec: '07:00:43' })), true);
+eq('같은 행은 같은 id', L.rowId(IR()), L.rowId(IR()));
+eq('금액이 다르면 다른 id', L.rowId(IR()) !== L.rowId(IR({ amount: 5600 })), true);
+eq('id에 날짜가 앞에 붙음', L.rowId(IR()).startsWith('2026-08-14_'), true);
+eq('해시는 문자열', typeof L.hashStr('가나다'), 'string');
+
+console.log('[이름 정규화]');
+eq('회차 번호를 #로', L.normalizeName('867707**70   ,2512-38회차'), '######**## ,####-##회차');
+eq('회차가 달라도 같은 키', L.normalizeName('867707**70   ,2512-38회차'), L.normalizeName('867707**70   ,2601-39회차'));
+eq('사람 이름은 그대로', L.normalizeName('김*훈'), '김*훈');
+eq('규칙 키는 타입별', L.ruleKey('이체', '쿠팡'), '이체|쿠팡');
+
+const IS = { excludeMethods: [], chargeNames: L.BS_DEFAULT_CHARGE, rules: { ...L.BS_DEFAULT_RULES } };
+const ic = (o, s = IS) => L.classifyRow(IR(o), s);
+
+console.log('[지출]');
+eq('음수 지출 → 지출로 기록', [ic({}).decision, ic({}).amount, ic({}).categoryName], ['record', 5600, '교통']);
+eq('양수 지출 → 취소/환불(음수 기록)', [ic({ amount: 5600 }).decision, ic({ amount: 5600 }).amount, ic({ amount: 5600 }).reason], ['record', -5600, 'refund']);
+eq('0원은 건너뜀', ic({ amount: 0 }).decision, 'exclude');
+eq('대분류 매핑: 온라인쇼핑 → 쇼핑', ic({ cat1: '온라인쇼핑' }).categoryName, '쇼핑');
+eq('모르는 대분류 → 기타', ic({ cat1: '없는분류' }).categoryName, '기타');
+eq('제외 결제수단', ic({}, { ...IS, excludeMethods: ['카카오페이 간편결제'] }).decision, 'exclude');
+
+console.log('[지출 · 대분류 금융]');
+const ifin = (cat2, content = '송금 내역') => ic({ type: '지출', cat1: '금융', cat2, content, amount: -30000 });
+eq('송금 내역(카카오페이 N빵) → 기록', [ifin('은행').decision, ifin('은행').amount], ['record', 30000]);
+eq('증권/투자 → 제외', ifin('증권/투자', '토스 원규나').decision, 'exclude');
+eq('ATM(현금 인출) → 확인', ifin('은행', 'ATM').decision, 'pending');
+eq('이자/대출 → 기록', ifin('이자/대출', '토스 김영훈').decision, 'record');
+eq('세금/과태료 → 기록', ifin('세금/과태료', '정부24').decision, 'record');
+
+console.log('[이체]');
+const itr = (cat1, content, amount, method = 'KB마이핏통장') => ic({ type: '이체', cat1, cat2: '미분류', content, amount, method });
+eq('내계좌이체 → 제외', itr('내계좌이체', '정은수', -1800000).decision, 'exclude');
+eq('카드대금 → 제외', itr('카드대금', '신한카드', -1551390).decision, 'exclude');
+eq('저축·투자 → 제외', [itr('저축', '예금', 1).decision, itr('투자', '무신사머니', -1).decision], ['exclude', 'exclude']);
+eq('현금(환전) → 제외', itr('현금', 'JPY로 환전', -999998).decision, 'exclude');
+eq('대출 → 제외', itr('대출', '9901 신한카드', 1).decision, 'exclude');
+eq('미분류(입금 내역) → 제외', itr('미분류', '입금 내역', 454000).decision, 'exclude');
+eq('타인에게 보냄 → 지출', [itr('이체', '김양래', -10000).decision, itr('이체', '김양래', -10000).amount, itr('이체', '김양래', -10000).reason], ['record', 10000, 'sent']);
+eq('타인에게 받음 → 환급', [itr('이체', '김*훈', 22666).decision, itr('이체', '김*훈', 22666).amount, itr('이체', '김*훈', 22666).reason], ['record', -22666, 'received']);
+eq('N빵 20만원은 자동 기록', itr('이체', '정*원', 200000).decision, 'record');
+eq('30만원 이상 이체 → 확인', itr('이체', '임지숙', 49028181).decision, 'pending');
+eq('30만원 정확히 → 확인', itr('이체', '누구', 300000).decision, 'pending');
+eq('299,999 → 자동 기록', itr('이체', '누구', 299999).decision, 'record');
+eq('1원 입금 → 소액 제외', itr('이체', '추운두유', 1).decision, 'exclude');
+eq('999원 → 소액 제외', itr('이체', '누구', -999).decision, 'exclude');
+eq('1,000원 → 기록', itr('이체', '누구', -1000).decision, 'record');
+
+console.log('[간편결제 충전]');
+eq('이체로 들어온 충전 → 제외', itr('이체', '카카오페이', -49799).decision, 'exclude');
+eq('내계좌이체로 들어온 충전 → 제외', itr('내계좌이체', '네이버페이충전', -10000).decision, 'exclude');
+eq('지출로 들어온 충전도 제외 (타입 무관)', ic({ type: '지출', cat1: '온라인쇼핑', content: '네이버페이충전', amount: -30000 }).decision, 'exclude');
+eq('충전 제외가 소액 기준보다 먼저', itr('이체', '충전 내역', 10000).reason, 'charge');
+
+console.log('[학습 규칙]');
+const iWithRule = { ...IS, rules: { ...L.BS_DEFAULT_RULES, '이체|쿠팡': { kind: 'record', categoryName: '쇼핑' } } };
+eq('쿠팡 충전은 지출로 (쿠팡캐시는 연동 안 됨)', [ic({ type: '이체', cat1: '이체', content: '쿠팡', amount: -100000 }, iWithRule).decision, ic({ type: '이체', cat1: '이체', content: '쿠팡', amount: -100000 }, iWithRule).amount], ['record', 100000]);
+eq('같은 이름이라도 지출은 규칙 영향 없음', ic({ type: '지출', cat1: '온라인쇼핑', content: '쿠팡', amount: -8310 }, iWithRule).categoryName, '쇼핑');
+eq('회사 입금은 기본 규칙으로 제외', ic({ type: '이체', cat1: '이체', content: '엘지에너지솔루션', amount: 55200 }).decision, 'exclude');
+eq('규칙이 큰 이체보다 먼저', ic({ type: '이체', cat1: '이체', content: '엘지에너지솔루션', amount: 5000000 }).decision, 'exclude');
+const iNumRule = { ...IS, rules: { '지출|######**## ,####-##회차': { kind: 'exclude' } } };
+eq('회차가 달라도 정규화 규칙이 걸림', ic({ type: '지출', cat1: '교육/학습', content: '867707**70   ,2601-39회차', amount: -20000 }, iNumRule).decision, 'exclude');
+
+console.log('[수입]');
+eq('급여 → 제외', ic({ type: '수입', cat1: '급여', content: '급여', amount: 2000000 }).decision, 'exclude');
+eq('이자 → 제외', ic({ type: '수입', cat1: '금융수입', content: '통장 이자', amount: 120 }).decision, 'exclude');
+eq('잡수입 → 제외', ic({ type: '수입', cat1: '기타수입', content: '적립 내역', amount: 2 }).decision, 'exclude');
+
+console.log('[가져오기 계획]');
+const irows = [IR(), IR({ sec: '07:00:43' }), IR({ type: '수입', cat1: '급여', amount: 2000000 }), IR({ date: '2026-08-20', amount: -1000 })];
+const iplan = L.planImport(irows, IS, new Set());
+eq('기간', [iplan.from, iplan.to], ['2026-08-14', '2026-08-20']);
+eq('기록 3건 · 제외 1건', [iplan.record.length, iplan.exclude.length, iplan.pending.length], [3, 1, 0]);
+eq('지출 합계', iplan.spend, 12200);
+const idone = new Set([L.rowId(IR())]);
+eq('이미 가져온 건은 건너뜀', L.planImport(irows, IS, idone).already.length, 1);
+eq('건너뛴 건은 기록에 없음', L.planImport(irows, IS, idone).record.length, 2);
+eq('같은 파일을 두 번 올려도 새로 들어오는 건 없음', L.planImport(irows, IS, new Set(irows.map(L.rowId))).record.length, 0);
+eq('결제수단 목록을 뽑아 줌', iplan.methods, ['카카오페이 간편결제']);
+
+console.log('[표 읽기]');
+const igrid = [
+  ['뱅크샐러드 가계부'],
+  [],
+  ['날짜', '시간', '타입', '대분류', '소분류', '내용', '금액', '화폐', '결제수단', '메모'],
+  [46282, 0.7200115740740741, '이체', '이체', '미분류', '추운두유', 1, 'KRW', '토스뱅크 통장', null],
+  [46281, 0.4373842592592592, '지출', '온라인쇼핑', '서비스구독', '네이버플러스멤버십', -4900, 'KRW', '네이버페이 간편결제(머니)', null],
+  [null, null, null],
+];
+const iparsed = L.parseBanksaladRows(igrid);
+eq('헤더 줄을 찾아냄', iparsed.length, 2);
+eq('첫 행', [iparsed[0].date, iparsed[0].time, iparsed[0].type, iparsed[0].content, iparsed[0].amount], ['2026-09-17', '17:16', '이체', '추운두유', 1]);
+eq('빈 날짜 줄은 건너뜀', iparsed.every(r => !!r.date), true);
+eq('공유 문자열', L.parseSharedStrings('<sst><si><t>가</t></si><si><r><t>나</t></r><r><t>다</t></r></si></sst>'), ['가', '나다']);
+eq('시트 셀 읽기', L.parseSheet('<row r="1"><c r="A1" t="s"><v>0</v></c><c r="C1"><v>-4900</v></c></row>', ['식비']), [['식비', undefined, -4900]]);
+
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);
