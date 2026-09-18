@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -277,5 +277,42 @@ eq('지난 주기 볼 때 오늘 쓴 돈은 0',ps.today,0);
 eq('예산이 없으면 페이스 없음',L.homeStats(pastTxs,cats,pastRef,null,'2026-09-18').pace,null);
 eq('예산이 없으면 비율도 없음',L.homeStats(pastTxs,cats,pastRef,null,'2026-09-18').budgetPct,null);
 eq('이번 주기는 오늘까지만 누적',L.homeStats(pastTxs,cats,'2026-09-18',null).series.length,L.cycleOf('2026-09-18').start==='2026-08-25'?25:0);
+
+
+console.log('[가져오기 알림 (v3.2.0)]');
+const D = d => new Date(d + 'T12:00:00+09:00').getTime();
+const bs = [{ id: 'b1', importedAt: D('2026-09-04') }, { id: 'b2', importedAt: D('2026-09-11') }];
+eq('마지막 가져오기 날짜', L.lastImportYMD(bs), '2026-09-11');
+eq('한 번도 안 가져왔으면 null', L.lastImportYMD([]), null);
+eq('6일 지남 → 안 알림', L.importDue(bs, '2026-09-17', 7), null);
+eq('7일 지남 → 알림', L.importDue(bs, '2026-09-18', 7).level, 'due');
+eq('알림에 지난 날수', L.importDue(bs, '2026-09-18', 7).days, 7);
+eq('14일 지남 → 강한 알림', L.importDue(bs, '2026-09-25', 7).level, 'late');
+eq('알림 끄면 null', L.importDue(bs, '2026-10-30', 0), null);
+eq('가져온 적 없으면 알리지 않음', L.importDue([], '2026-09-18', 7), null);
+eq('기준을 14일로 바꾸면', [L.importDue(bs, '2026-09-18', 14), L.importDue(bs, '2026-09-26', 14).level], [null, 'due']);
+
+console.log('[내역 일괄 수정 (v3.2.0)]');
+const bt = [
+  { id: 't1', categoryId: 'a', amount: 10000, kind: 'living', kindSource: 'auto', date: '2026-09-01' },
+  { id: 't2', categoryId: 'a', amount: 500000, kind: 'living', kindSource: 'auto', date: '2026-09-02' },
+  { id: 't3', categoryId: 'z', amount: 3000, kind: 'living', kindSource: 'auto', date: '2026-09-03' },
+];
+const mvd = L.bulkSetCategory(bt, ['t1', 't2'], 'g', cm, T, 99);
+eq('고른 것만 바뀜', mvd.map(t => t.id), ['t1', 't2']);
+eq('카테고리 이동', mvd.every(t => t.categoryId === 'g'), true);
+eq('특별지출 카테고리로 옮기면 특별', mvd.map(t => t.kind), ['special', 'special']);
+eq('일괄 변경은 질문하지 않음', mvd.every(t => t.kindSource === 'auto'), true);
+eq('updatedAt 갱신', mvd[0].updatedAt, 99);
+eq('원본은 그대로', bt[0].categoryId, 'a');
+const kd = L.bulkSetKind(bt, ['t1', 't3'], 'special', 100);
+eq('분류 일괄 전환', kd.map(t => [t.id, t.kind, t.kindSource]), [['t1', 'special', 'manual'], ['t3', 'special', 'manual']]);
+eq('수동 전환은 규칙보다 우선', L.resolveKind(kd[0], cm, T).kind, 'special');
+
+console.log('[내역 주기 칩]');
+const ct = [tx('2026-09-15', 1), tx('2026-08-01', 1), tx('2026-06-30', 1)];
+eq('내역이 있는 주기만 (최근 순)', L.cyclesInData(ct, '2026-09-18').map(c => c.id), ['2026-08', '2026-07', '2026-06']);
+eq('이번 주기는 내역이 없어도 포함', L.cyclesInData([tx('2026-06-30', 1)], '2026-09-18').map(c => c.id), ['2026-08', '2026-06']);
+eq('개수 제한', L.cyclesInData(ct, '2026-09-18', 2).length, 2);
 
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);

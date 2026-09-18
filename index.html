@@ -143,6 +143,37 @@ input{font:inherit;font-size:16px;color:var(--text)}
 .tx-amt{font-size:16px;font-weight:600;white-space:nowrap}
 .tx.canceled .tx-title,.tx.canceled .tx-amt{text-decoration:line-through;color:var(--faint)}
 .tx-amt.refund{color:var(--accent)}
+/* 내역 일괄 수정 (v3.2.0) */
+body.sel-mode #tabbar, body.sel-mode #fab{display:none}
+.selbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px;min-height:52px}
+.selbar .mid{font-size:15px;font-weight:600;text-align:center;flex:1;min-width:0}
+.selbar .mid small{display:block;font-size:12px;font-weight:400;color:var(--sub)}
+.ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;color:transparent;transition:background .12s,border-color .12s}
+.ck.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.ck svg{width:14px;height:14px}
+.day-head .ck{width:20px;height:20px}
+.day-head{align-items:center;gap:8px}
+.day-head .grow{flex:1}
+.actbar{
+  position:fixed;left:0;right:0;bottom:0;z-index:22;display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  padding:10px 16px calc(var(--safe-bottom) + 10px);
+  background:color-mix(in srgb,var(--card) 92%,transparent);
+  -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border-top:1px solid var(--line);
+}
+.actbar button{height:48px;border-radius:14px;background:var(--press);font-size:15px;font-weight:600}
+.actbar button:active{opacity:.6}
+.actbar button.danger{color:var(--danger)}
+.actbar button:disabled{opacity:.3}
+.cycle-chips{display:flex;gap:8px;overflow-x:auto;padding:8px 16px 0;scrollbar-width:none}
+.cycle-chips::-webkit-scrollbar{display:none}
+.cycle-chips .chip{height:30px;font-size:13px}
+/* 가져오기 알림 카드 */
+.due-card{display:flex;align-items:center;gap:12px;border-radius:var(--radius);margin:4px 16px 12px;padding:16px 20px;animation:fadeUp .25s ease-out}
+.due-card.due{background:var(--accent-weak);color:var(--text)}
+.due-card.late{background:var(--warn);color:#fff}
+.due-card .grow{flex:1}
+.due-card b{font-size:16px;font-weight:600;display:block}
+.due-card small{font-size:13px;opacity:.85}
 
 /* ---------- 준비 중 화면 ---------- */
 .placeholder{text-align:center;color:var(--sub);padding:80px 32px}
@@ -387,7 +418,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '3.1.0';
+const APP_VERSION = '3.2.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -576,6 +607,44 @@ function homeStats(txs, categories, ref, budget, todayY) {
     daysLeft: cycleDays(c) - elapsed + 1,
     pace: budget ? paceOf(livingTotal, budget, ref, c) : null,
   };
+}
+
+/* ---- 가져오기 알림 (v3.2.0) ----
+   기준은 '마지막으로 파일을 가져온 날'이다.
+   '내역의 마지막 날짜'로 재면 며칠 돈을 안 썼을 때 비어 있다고 잘못 알린다. */
+function lastImportYMD(batches) {
+  if (!batches || !batches.length) return null;
+  const last = batches.reduce((a, b) => (b.importedAt > a.importedAt ? b : a));
+  return toYMD(new Date(last.importedAt));
+}
+/** everyDays가 지났으면 {days, ymd, level}. 아니면 null. 한 번도 안 가져왔으면 알리지 않는다 */
+function importDue(batches, today, everyDays) {
+  if (!everyDays) return null;
+  const ymd = lastImportYMD(batches);
+  if (!ymd) return null;
+  const days = diffDays(ymd, today);
+  if (days < everyDays) return null;
+  return { days, ymd, level: days >= everyDays * 2 ? 'late' : 'due' };
+}
+
+/* ---- 내역 일괄 수정 (v3.2.0) ---- */
+/** 고른 내역의 카테고리를 한꺼번에 바꾼다. 분류는 질문 없이 다시 계산한다 */
+function bulkSetCategory(txs, ids, catId, catMap, threshold, now) {
+  const set = new Set(ids);
+  return txs.filter(t => set.has(t.id))
+    .map(t => ({ ...recomputeKind({ ...t, categoryId: catId }, catMap, threshold), updatedAt: now }));
+}
+/** 고른 내역을 생활비/특별지출로 바꾼다. 직접 바꾼 것이므로 항상 유지된다 */
+function bulkSetKind(txs, ids, kind, now) {
+  const set = new Set(ids);
+  return txs.filter(t => set.has(t.id)).map(t => ({ ...t, kind, kindSource: 'manual', updatedAt: now }));
+}
+/** 내역이 들어 있는 주기 목록 (최근 것부터). 내역 탭 주기 칩에 쓴다 */
+function cyclesInData(txs, today, max = 12) {
+  const ids = new Set(txs.map(t => cycleOf(t.date).id));
+  ids.add(cycleOf(today).id);
+  return [...ids].sort().reverse().slice(0, max)
+    .map(id => { const [y, m] = id.split('-').map(Number); return cycleOf(`${y}-${pad(m)}-${pad(PAYDAY)}`); });
 }
 
 /** 내역이 있는 가장 이른 주기 (◀ 를 어디까지 누를 수 있는지) */
@@ -1166,6 +1235,14 @@ function dbDeleteCategory(catId, movedTxs, movedFixeds, movedRules) {
     t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
+/** 여러 내역을 한 트랜잭션으로 지운다 */
+function dbDeleteMany(name, ids) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(name, 'readwrite');
+    ids.forEach(id => t.objectStore(name).delete(id));
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
 /** 고정지출 삭제: 항목과 완료 표시만 지움. 이미 기록된 지출 내역은 남김 */
 function dbDeleteFixed(id, keys) {
   return new Promise((res, rej) => {
@@ -1228,6 +1305,7 @@ const state = {
   importRows: [], batches: [], rules: {},
   excludeMethods: [], chargeNames: BS_DEFAULT_CHARGE.slice(), seenMethods: [],
   tab: 'home', filterCat: 'all', query: '', homeCat: null, homeRef: null,
+  cycleFilter: 'all', selMode: false, sel: [], importEvery: 7,
 };
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1291,6 +1369,7 @@ const ICON = {
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
   chev: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>',
   search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
   del: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M21 5H8l-6 7 6 7h13a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1z"/><path d="m12 9 6 6m0-6-6 6" stroke-linecap="round"/></svg>',
 };
 
@@ -1468,6 +1547,7 @@ function renderHome() {
   const p = s.pace;
   const up = isCurrent ? upcomingFixed(state.fixeds, today) : [];
   const pend = pendingRows().length;
+  const due = isCurrent ? importDue(state.batches, today, state.importEvery) : null;
   const first = earliestCycle(state.txs, today);
   const canPrev = c.start > first.start;
   const canNext = !isCurrent;
@@ -1514,6 +1594,11 @@ function renderHome() {
       <span style="font-size:24px">📋</span>
       <span class="grow"><b>확인할 내역 ${pend}건</b><small>가져온 파일에서 판단이 필요해요</small></span>
       ${ICON.chev}</div>` : ''}
+    ${due ? `<div class="due-card ${due.level} pressable" id="go-import">
+      <span style="font-size:24px">📄</span>
+      <span class="grow"><b>${due.level === 'late' ? `${Math.floor(due.days / 7)}주째 가져오지 않았어요` : '파일 가져올 때가 됐어요'}</b>
+        <small>마지막 가져오기 ${esc(dateLabel(due.ymd))} · ${due.days}일 전</small></span>
+      ${ICON.chev}</div>` : ''}
     ${isCurrent ? budgetCardHTML(bNow) : ''}
     ${gauge}
     <div class="stats two">
@@ -1537,6 +1622,8 @@ function renderHome() {
   if (go) go.onclick = () => switchTab('fixed');
   const gp = $('#go-pending');
   if (gp) gp.onclick = () => openPending();
+  const gi = $('#go-import');
+  if (gi) gi.onclick = () => openImport();
   $('#view').querySelectorAll('[data-cyc]').forEach(b2 => b2.onclick = () => {
     if (b2.disabled) return;
     state.homeRef = shiftCycleRef(ref, Number(b2.dataset.cyc), today);
@@ -1590,12 +1677,33 @@ function kindLabels(t) {
   return s;
 }
 const txSource = t => (t.method === 'fixed-auto' ? '자동 기록' : t.method === 'import' ? '가져옴' : null);
-function renderList() {
+function txRowHTML(t, selecting, selected) {
+  const c = catById(t.categoryId);
+  const src = txSource(t);
+  return `<div class="tx ${t.status === 'canceled' ? 'canceled' : ''}" data-tx="${t.id}">
+      ${selecting ? `<span class="ck ${selected ? 'on' : ''}">${ICON.check}</span>` : ''}
+      <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
+      <div class="tx-main"><div class="tx-title">${esc(t.merchant || c.name)}${kindLabels(t)}</div>
+        <div class="tx-sub">${src ? esc(src) : `<span class="num">${t.time}</span>`} · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
+      <div class="tx-amt num ${t.amount < 0 ? 'refund' : ''}">${formatWon(t.amount)}원</div>
+    </div>`;
+}
+
+/** 지금 화면 조건(주기·카테고리·검색)에 맞는 내역 */
+function visibleTxs() {
   const q = state.query.trim().toLowerCase();
-  const list = state.txs
+  return state.txs
+    .filter(t => state.cycleFilter === 'all' || cycleOf(t.date).id === state.cycleFilter)
     .filter(t => state.filterCat === 'all' || t.categoryId === state.filterCat)
     .filter(t => !q || (t.merchant || '').toLowerCase().includes(q))
     .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time) || b.createdAt - a.createdAt);
+}
+
+function renderList() {
+  const list = visibleTxs();
+  const selecting = state.selMode;
+  const sel = new Set(state.sel);
+  document.body.classList.toggle('sel-mode', selecting);
 
   const groups = [];
   list.forEach(t => {
@@ -1603,36 +1711,141 @@ function renderList() {
     if (last && last.date === t.date) last.items.push(t); else groups.push({ date: t.date, items: [t] });
   });
 
-  const body = groups.map(g => `
+  const body = groups.map(g => {
+    const allOn = g.items.every(t => sel.has(t.id));
+    return `
     <section class="section" style="padding:14px 12px">
-      <div class="day-head"><span>${dateLabel(g.date)}</span><span class="num">${formatWon(sumAmount(g.items.filter(isCounted)))}원</span></div>
-      ${g.items.map(t => {
-        const c = catById(t.categoryId);
-        const src = txSource(t);
-        return `<div class="tx ${t.status === 'canceled' ? 'canceled' : ''}" data-tx="${t.id}">
-          <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
-          <div class="tx-main"><div class="tx-title">${esc(t.merchant || c.name)}${kindLabels(t)}</div>
-            <div class="tx-sub">${src ? esc(src) : `<span class="num">${t.time}</span>`} · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
-          <div class="tx-amt num ${t.amount < 0 ? 'refund' : ''}">${formatWon(t.amount)}원</div>
-        </div>`;
-      }).join('')}
-    </section>`).join('');
+      <div class="day-head">
+        ${selecting ? `<span class="ck ${allOn ? 'on' : ''}" data-day-ck="${g.date}">${ICON.check}</span>` : ''}
+        <span class="grow">${dateLabel(g.date)}</span><span class="num">${formatWon(sumAmount(g.items.filter(isCounted)))}원</span></div>
+      ${g.items.map(t => txRowHTML(t, selecting, sel.has(t.id))).join('')}
+    </section>`;
+  }).join('');
 
+  const cycles = cyclesInData(state.txs, todayYMD());
+  const cycleChips = [{ id: 'all', name: '전체' }, ...cycles.map(c => ({ id: c.id, name: c.name }))]
+    .map(c => `<button class="chip ${state.cycleFilter === c.id ? 'on' : ''}" data-cycle="${c.id}">${esc(c.name)}</button>`).join('');
   const chips = [{ id: 'all', name: '전체', emoji: '' }, ...state.cats]
     .map(c => `<button class="chip ${state.filterCat === c.id ? 'on' : ''}" data-filter="${c.id}">${c.emoji ? esc(c.emoji) + ' ' : ''}${esc(c.name)}</button>`).join('');
 
+  const selTotal = sumAmount(state.txs.filter(t => sel.has(t.id) && isCounted(t)));
+  const head = selecting
+    ? `<div class="selbar">
+         <button class="text-btn" id="sel-cancel">취소</button>
+         <span class="mid">${state.sel.length}건 선택<small class="num">${formatWon(selTotal)}원</small></span>
+         <button class="text-btn" id="sel-all">${list.length && list.every(t => sel.has(t.id)) ? '선택 해제' : '전체'}</button>
+       </div>`
+    : `<div class="topbar"><h1>내역</h1>${state.txs.length ? '<button class="text-btn" id="sel-start">선택</button>' : ''}</div>`;
+
   const searchFocused = document.activeElement && document.activeElement.id === 'q';
   $('#view').innerHTML = `
-    <div class="topbar"><h1>내역</h1></div>
+    ${head}
     <div class="search">${ICON.search}<input id="q" type="search" placeholder="가맹점 검색" value="${esc(state.query)}" autocomplete="off"></div>
+    <div class="cycle-chips">${cycleChips}</div>
     <div class="chips">${chips}</div>
-    <div id="list-body">${body || `<div class="empty" style="padding-top:60px">${q || state.filterCat !== 'all' ? '조건에 맞는 내역이 없어요' : '아직 기록된 내역이 없어요'}</div>`}</div>`;
+    <div id="list-body">${body || `<div class="empty" style="padding-top:60px">${state.query || state.filterCat !== 'all' || state.cycleFilter !== 'all' ? '조건에 맞는 내역이 없어요' : '아직 기록된 내역이 없어요'}</div>`}</div>
+    ${selecting ? `<div class="actbar">
+      <button id="act-cat" ${state.sel.length ? '' : 'disabled'}>카테고리</button>
+      <button id="act-kind" ${state.sel.length ? '' : 'disabled'}>특별지출</button>
+      <button id="act-del" class="danger" ${state.sel.length ? '' : 'disabled'}>삭제</button>
+    </div>` : ''}`;
 
   const qi = $('#q');
-  qi.oninput = () => { state.query = qi.value; renderList(); };
-  if (searchFocused) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  if (qi) {
+    qi.oninput = () => { state.query = qi.value; renderList(); };
+    if (searchFocused) { qi.focus(); qi.setSelectionRange(qi.value.length, qi.value.length); }
+  }
+  $('#view').querySelectorAll('[data-cycle]').forEach(b => b.onclick = () => { state.cycleFilter = b.dataset.cycle; renderList(); });
   $('#view').querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { state.filterCat = b.dataset.filter; renderList(); });
-  $('#view').querySelectorAll('[data-tx]').forEach(el => el.onclick = () => openEntry(state.txs.find(t => t.id === el.dataset.tx)));
+
+  if (!selecting) {
+    const st = $('#sel-start');
+    if (st) st.onclick = () => { state.selMode = true; state.sel = []; renderList(); };
+    $('#view').querySelectorAll('[data-tx]').forEach(el => el.onclick = () => openEntry(state.txs.find(t => t.id === el.dataset.tx)));
+    return;
+  }
+
+  const toggle = ids => {
+    const s2 = new Set(state.sel);
+    const allOn = ids.every(id => s2.has(id));
+    ids.forEach(id => (allOn ? s2.delete(id) : s2.add(id)));
+    state.sel = [...s2];
+    renderList();
+  };
+  $('#view').querySelectorAll('[data-tx]').forEach(el => el.onclick = () => toggle([el.dataset.tx]));
+  $('#view').querySelectorAll('[data-day-ck]').forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    toggle(list.filter(t => t.date === el.dataset.dayCk).map(t => t.id));
+  });
+  $('#sel-cancel').onclick = () => { state.selMode = false; state.sel = []; renderList(); };
+  $('#sel-all').onclick = () => {
+    state.sel = list.every(t => sel.has(t.id)) ? [] : list.map(t => t.id);
+    renderList();
+  };
+  $('#act-cat').onclick = () => openBulkCategory();
+  $('#act-kind').onclick = () => openBulkKind();
+  $('#act-del').onclick = () => bulkDelete();
+}
+
+/* ---- 일괄 작업 ---- */
+async function afterBulk(changed, msg) {
+  await dbPutMany('transactions', changed);
+  const byId = Object.fromEntries(changed.map(t => [t.id, t]));
+  state.txs = state.txs.map(t => byId[t.id] || t);
+  state.selMode = false; state.sel = [];
+  renderList(); toast(msg);
+}
+function openBulkCategory() {
+  const n = state.sel.length;
+  const s = openSheet(`
+    <div class="sheet-head"><button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">카테고리 바꾸기</div><span style="width:44px"></span></div>
+    <div class="hint" style="text-align:center;margin:0 0 6px">고른 ${n}건을 옮길 카테고리를 고르세요</div>
+    <div class="cat-grid" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
+      ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
+    </div>`);
+  s.el.querySelectorAll('[data-cat]').forEach(b => b.onclick = async () => {
+    const cat = state.cats.find(c => c.id === b.dataset.cat);
+    const changed = bulkSetCategory(state.txs, state.sel, cat.id, catMap(), state.threshold, Date.now());
+    s.close();
+    try { await afterBulk(changed, `${changed.length}건을 '${cat.name}'으로 옮겼어요`); }
+    catch (e) { toast('바꾸지 못했어요'); }
+  });
+}
+function openBulkKind() {
+  const n = state.sel.length;
+  const s = openSheet(`
+    <div class="choice-q">${n}건을 어떻게 분류할까요?</div>
+    <div class="choice-d">특별지출은 생활비 게이지에서 빠지고 반기 합계로만 보여요. 여기서 직접 바꾼 건은 규칙이 바뀌어도 그대로 유지돼요.</div>
+    <div class="choice-btns">
+      <button class="primary" data-kind="special">특별지출로</button>
+      <button class="secondary" data-kind="living">생활비로</button>
+    </div>`);
+  s.el.querySelectorAll('[data-kind]').forEach(b => b.onclick = async () => {
+    const kind = b.dataset.kind;
+    const changed = bulkSetKind(state.txs, state.sel, kind, Date.now());
+    s.close();
+    try { await afterBulk(changed, `${changed.length}건을 ${kind === 'special' ? '특별지출' : '생활비'}로 바꿨어요`); }
+    catch (e) { toast('바꾸지 못했어요'); }
+  });
+}
+async function bulkDelete() {
+  const ids = [...state.sel];
+  if (!ids.length) return;
+  if (!confirm(`내역 ${ids.length}건을 삭제할까요?\n되돌릴 수 없어요.`)) return;
+  try { await dbDeleteMany('transactions', ids); } catch (e) { toast('삭제하지 못했어요'); return; }
+  const gone = new Set(ids);
+  state.txs = state.txs.filter(t => !gone.has(t.id));
+  // 가져온 건을 지우면 그 행도 '건너뜀'으로 바꿔 다시 들어오지 않게 한다
+  const rows = state.importRows.filter(r => r.transactionId && gone.has(r.transactionId));
+  if (rows.length) {
+    const upd = rows.map(r => ({ ...r, status: 'skipped', transactionId: null }));
+    try { await dbPutMany('importRows', upd); } catch (e) {}
+    const byId = Object.fromEntries(upd.map(r => [r.id, r]));
+    state.importRows = state.importRows.map(r => byId[r.id] || r);
+  }
+  state.selMode = false; state.sel = [];
+  renderList(); toast(`${ids.length}건을 삭제했어요`);
 }
 
 /* =====================================================================
@@ -1823,6 +2036,8 @@ function renderPlaceholder(tab) {
    탭 전환
    ===================================================================== */
 function render() {
+  if (state.tab !== 'list' && state.selMode) { state.selMode = false; state.sel = []; }
+  if (state.tab !== 'list') document.body.classList.remove('sel-mode');
   if (state.tab === 'home') renderHome();
   else if (state.tab === 'list') renderList();
   else if (state.tab === 'fixed') renderFixed();
@@ -1963,13 +2178,15 @@ const rawRowHTML = r => `
 
 function openImport() {
   const last = state.importRows.length ? lastImported(state.importRows.map(r => ({ date: r.date }))) : null;
+  const from = lastImportYMD(state.batches);
   const s = openSheet(`
     <div class="sheet-head">
       <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
       <div class="title">파일에서 가져오기</div><span style="width:44px"></span>
     </div>
     <div id="imp-body">
-      ${last ? `<div class="hint" style="text-align:center;margin:0 0 4px">마지막으로 가져온 내역: <b>${esc(dateLabel(last))}</b> · 그 이후 기간으로 받으면 돼요</div>` : ''}
+      ${from ? `<div class="hint" style="text-align:center;margin:0 0 2px">마지막 가져오기 <b>${esc(dateLabel(from))}</b> · 내역은 ${esc(last ? dateLabel(last) : '-')}까지 들어와 있어요</div>
+      <div class="hint" style="text-align:center;margin:0"><b>${esc(shortDate(from))} ~ 오늘</b> 기간으로 받으면 돼요</div>` : ''}
       <label class="drop">
         <div class="emo">📄</div>
         <b>뱅크샐러드 내역 파일을 올려주세요</b>
@@ -2298,6 +2515,7 @@ function openSettings() {
       <button class="list-row" id="s-pending"><span class="grow">확인할 내역</span><span class="val num" id="s-pending-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-methods"><span class="grow">제외할 결제수단</span><span class="val num" id="s-methods-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-rules"><span class="grow">자동 처리 규칙</span><span class="val num" id="s-rules-val"></span>${ICON.chev}</button>
+      <button class="list-row" id="s-every"><span class="grow">가져오기 알림</span><span class="val" id="s-every-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-batches"><span class="grow">가져오기 기록</span><span class="val num" id="s-batches-val"></span>${ICON.chev}</button>
       <div class="hint">법인·복지카드처럼 내 돈이 아닌 결제수단은 통째로 뺄 수 있어요. 자동 처리 규칙은 확인 대기함에서 고른 대로 쌓여요.</div></section>
     <section class="section"><h2 class="section-title">카테고리</h2><div id="s-cats"></div>
@@ -2316,6 +2534,7 @@ function openSettings() {
     $('#s-methods-val', el).textContent = state.excludeMethods.length ? `${state.excludeMethods.length}개` : '없음';
     $('#s-rules-val', el).textContent = `${Object.keys(state.rules).length}개`;
     $('#s-batches-val', el).textContent = `${state.batches.length}회`;
+    $('#s-every-val', el).textContent = state.importEvery ? `${state.importEvery}일마다` : '안 함';
   };
   const paintCats = () => {
     $('#s-cats', el).innerHTML = state.cats.map((c, i) => `
@@ -2347,11 +2566,29 @@ function openSettings() {
     onSave: async n => { state.threshold = n; await dbPut('meta', { key: 'specialThreshold', value: n }); paintTop(); toast('기준 금액을 저장했어요'); },
   });
   $('#s-pending', el).onclick = () => { if (pendingRows().length) openPending(); else toast('확인할 내역이 없어요'); };
+  $('#s-every', el).onclick = () => openEveryPicker(paintTop);
   $('#s-methods', el).onclick = () => openMethodPicker(paintTop);
   $('#s-rules', el).onclick = () => openRuleList(paintTop);
   $('#s-batches', el).onclick = () => openBatchList(paintTop);
   $('#s-add-cat', el).onclick = () => openCategoryEditor(null, paintCats);
   paintTop(); paintCats();
+}
+
+/** 가져오기 알림 주기 */
+function openEveryPicker(done) {
+  const opts = [[7, '7일마다'], [14, '14일마다'], [0, '안 함']];
+  const s = openSheet(`
+    <div class="sheet-head"><button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">가져오기 알림</div><span style="width:44px"></span></div>
+    <div class="action-list">
+      ${opts.map(([v, t]) => `<button data-every="${v}"><span class="emo">${state.importEvery === v ? '✓' : ''}</span><span>${t}</span></button>`).join('')}
+    </div>
+    <div class="hint">마지막으로 파일을 가져온 날부터 이만큼 지나면 홈에 알려드려요. 두 배가 지나면 더 눈에 띄게 바뀌어요.</div>`);
+  s.el.querySelectorAll('[data-every]').forEach(b => b.onclick = async () => {
+    state.importEvery = Number(b.dataset.every);
+    await dbPut('meta', { key: 'importEvery', value: state.importEvery });
+    s.close(); done(); render(); toast('저장했어요');
+  });
 }
 
 /** 제외할 결제수단 고르기 — 파일에서 본 수단 전부를 체크박스로 */
@@ -2543,6 +2780,8 @@ async function init() {
   if (sm) state.seenMethods = sm.value;
   const cn = await dbGet('meta', 'chargeNames');
   if (cn) state.chargeNames = cn.value;
+  const ie = await dbGet('meta', 'importEvery');
+  if (ie) state.importEvery = ie.value;
   const inst = await dbGet('meta', 'installedAt');
   const earliest = state.txs.map(t => t.date).sort()[0];
   state.installYMD = inst ? toYMD(new Date(inst.value)) : (earliest || todayYMD());
