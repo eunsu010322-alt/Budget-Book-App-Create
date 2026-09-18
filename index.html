@@ -108,6 +108,16 @@ input{font:inherit;font-size:16px;color:var(--text)}
 .cat-name{font-size:16px;font-weight:500}
 .cat-amt{font-size:16px;font-weight:600}
 .cat-meta{font-size:13px;color:var(--sub);display:flex;justify-content:space-between;margin-top:2px}
+/* 도넛과 목록을 색으로 잇는다 (v3.0.1) */
+.cat-row{border-radius:14px;padding:10px 8px;transition:background .15s}
+.cat-row.on{background:var(--press)}
+.cat-bar{height:8px;border-radius:4px;background:var(--line);margin-top:7px;overflow:hidden}
+.cat-bar i{display:block;height:100%;border-radius:4px;transition:width .35s ease}
+.cat-pct{font-weight:600}
+.donut-seg{cursor:pointer;transition:opacity .2s}
+.donut-wrap.picked .donut-seg{opacity:.28}
+.donut-wrap.picked .donut-seg.on{opacity:1}
+.cat-hint{font-size:12px;color:var(--faint);text-align:center;margin:-2px 0 10px}
 .bar{height:6px;border-radius:3px;background:var(--line);margin-top:6px;overflow:hidden}
 .bar i{display:block;height:100%;border-radius:3px;background:var(--accent);transition:width .4s ease}
 .lv-warn .bar i{background:var(--warn)} .lv-warn .pct{color:var(--warn);font-weight:600}
@@ -236,7 +246,14 @@ button.list-row:active{opacity:.6}
 .budget-card .btns button:active{transform:scale(.97)}
 .btn-ghost{background:var(--card);color:var(--text)}
 .btn-fill{background:var(--accent);color:#fff}
-.gauge-head{display:flex;justify-content:space-between;align-items:baseline;font-size:15px;color:var(--sub)}
+.gauge-head{display:flex;justify-content:space-between;align-items:center;font-size:15px;color:var(--sub);min-height:32px}
+/* 주기 넘기기 (v3.1.0) */
+.cyc-nav{display:flex;align-items:center;gap:2px;margin-left:-8px}
+.cyc-name{font-size:15px;font-weight:600;color:var(--text);white-space:nowrap}
+.cyc-btn{width:32px;height:32px;display:grid;place-items:center;border-radius:10px;color:var(--sub)}
+.cyc-btn svg{width:18px;height:18px}
+.cyc-btn:active{background:var(--press)}
+.cyc-btn:disabled{opacity:.2}
 .gauge-head .tag{font-size:12px;font-weight:600;color:var(--accent);background:var(--accent-weak);padding:2px 8px;border-radius:8px}
 .gauge-amt{font-size:34px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0}
 .gauge-amt small{font-size:22px;font-weight:600;margin-left:2px}
@@ -303,13 +320,14 @@ button.list-row:active{opacity:.6}
 
 /* ---------- 가져오기 (v3.0.0) ---------- */
 .drop{
-  border:2px dashed var(--line);border-radius:18px;padding:32px 20px;text-align:center;
-  position:relative;transition:border-color .15s,background .15s;margin-top:8px;
+  display:block;box-sizing:border-box;width:100%;
+  border:2px dashed var(--line);border-radius:18px;padding:28px 18px;text-align:center;
+  position:relative;overflow:hidden;transition:border-color .15s,background .15s;margin:10px 0 0;
 }
 .drop:active{border-color:var(--accent);background:var(--accent-weak)}
-.drop .emo{font-size:40px}
+.drop .emo{display:block;font-size:38px;line-height:1.1}
 .drop b{display:block;font-size:16px;font-weight:600;margin:10px 0 4px}
-.drop small{font-size:13px;color:var(--sub)}
+.drop small{display:block;font-size:13px;color:var(--sub);line-height:1.5}
 .drop input[type=file]{position:absolute;inset:0;opacity:0;width:100%;height:100%}
 .sum{background:var(--press);border-radius:16px;padding:16px;margin-top:12px}
 .sum .range{font-size:13px;color:var(--sub)}
@@ -369,7 +387,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '3.0.0';
+const APP_VERSION = '3.1.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -518,12 +536,16 @@ function cumulativeSeries(txs, c, today) {
   return daily.map(v => (acc += v));
 }
 
-/** 홈 화면 숫자 전부 계산. budget = 이번 주기 생활비 예산(없으면 null) */
-function homeStats(txs, categories, today, budget) {
-  const c = cycleOf(today), p = prevCycle(c);
+/** 홈 화면 숫자 전부 계산.
+ *  ref     = 기준일. 이 날짜가 속한 주기를 보여준다. 지난 주기를 볼 때는 그 주기의 마지막 날을 넣는다 (v3.1.0)
+ *  budget  = 그 주기의 생활비 예산 (없으면 null)
+ *  todayY  = 오늘 (안 넣으면 ref와 같다). '오늘 쓴 돈'에만 쓴다 */
+function homeStats(txs, categories, ref, budget, todayY) {
+  const today = todayY || ref;
+  const c = cycleOf(ref), p = prevCycle(c);
   const cur = txs.filter(t => isCounted(t) && inRange(t.date, c.start, c.end));
   const living = cur.filter(isLiving);
-  const elapsed = diffDays(c.start, today) + 1;
+  const elapsed = diffDays(c.start, ref) + 1;
   const pSameEnd = [addDays(p.start, elapsed - 1), p.end].sort()[0];
   const prevSame = sumAmount(txs.filter(t => isLiving(t) && inRange(t.date, p.start, pSameEnd)));
   const livingTotal = sumAmount(living);
@@ -542,16 +564,31 @@ function homeStats(txs, categories, today, budget) {
     .sort((a, b) => a.spent - b.spent);
 
   return {
-    cycle: c, catRows, negRows,
+    cycle: c, catRows, negRows, elapsed,
     living: livingTotal,
-    half: halfOf(today),
-    special: sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, halfOf(today).start, halfOf(today).end))),
-    series: cumulativeSeries(txs, c, today),
+    half: halfOf(ref),
+    special: sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, halfOf(ref).start, halfOf(ref).end))),
+    series: cumulativeSeries(txs, c, ref),
     today: sumAmount(cur.filter(t => t.date === today)),
+    avgDaily: elapsed > 0 ? Math.floor(livingTotal / elapsed) : 0,
+    budgetPct: budget ? Math.round(livingTotal / budget * 100) : null,
     prevSame, change: changeRate(livingTotal, prevSame),
     daysLeft: cycleDays(c) - elapsed + 1,
-    pace: budget ? paceOf(livingTotal, budget, today, c) : null,
+    pace: budget ? paceOf(livingTotal, budget, ref, c) : null,
   };
+}
+
+/** 내역이 있는 가장 이른 주기 (◀ 를 어디까지 누를 수 있는지) */
+function earliestCycle(txs, today) {
+  const d = txs.map(t => t.date).sort()[0];
+  return cycleOf(d || today);
+}
+/** 주기를 앞뒤로 옮긴다. 이번 주기로 돌아오면 null을 돌려준다 (= 오늘 기준) */
+function shiftCycleRef(ref, dir, today) {
+  const c = cycleOf(ref);
+  const n = dir < 0 ? prevCycle(c) : nextCycle(c);
+  if (inRange(today, n.start, n.end)) return null;
+  return dir < 0 ? n.end : n.end;
 }
 
 /** 키패드 입력 처리: 현재 문자열 + 키 → 새 문자열 */
@@ -1190,7 +1227,7 @@ const state = {
   fixeds: [], completions: [], fixedView: 'calendar', fixedSel: null,
   importRows: [], batches: [], rules: {},
   excludeMethods: [], chargeNames: BS_DEFAULT_CHARGE.slice(), seenMethods: [],
-  tab: 'home', filterCat: 'all', query: '',
+  tab: 'home', filterCat: 'all', query: '', homeCat: null, homeRef: null,
 };
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -1235,6 +1272,11 @@ function budgetState(today = todayYMD()) {
   if (suggestion) return { cycle: c, amount: rec ? rec.amount : suggestion.amount, provisional: true, suggestion };
   return { cycle: c, amount: null, provisional: false, suggestion: null };
 }
+/** 그 주기에 저장된 예산 (없으면 null). 지난 주기에는 제안값을 쓰지 않는다 */
+function budgetOfCycle(cycleId) {
+  const r = state.budgets[cycleId];
+  return r ? r.amount : null;
+}
 async function saveBudget(cycleId, amount, confirmed, suggested) {
   const rec = { cycleId, amount, suggested: suggested ?? null, confirmedAt: confirmed ? Date.now() : null };
   await dbPut('cycleBudgets', rec);
@@ -1243,6 +1285,7 @@ async function saveBudget(cycleId, amount, confirmed, suggested) {
 const ICON = {
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
   back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 5-7 7 7 7"/></svg>',
+  fwd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 7 7-7 7"/></svg>',
   close: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
   up: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 15 6-6 6 6"/></svg>',
   down: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
@@ -1254,7 +1297,8 @@ const ICON = {
 /* =====================================================================
    화면: 홈
    ===================================================================== */
-function donutSVG(rows) {
+/** 도넛. selId가 있으면 그 조각만 진하게 보여주고 가운데도 그 카테고리로 바꾼다 */
+function donutSVG(rows, selId) {
   const r = 66, sw = 22, C = 2 * Math.PI * r;
   const parts = rows.filter(x => x.spent > 0);
   let segs = '';
@@ -1265,17 +1309,60 @@ function donutSVG(rows) {
     let offset = 0;
     parts.forEach(x => {
       const len = Math.max(0, x.share * C - gap);
-      segs += `<circle cx="90" cy="90" r="${r}" fill="none" stroke="${x.cat.color}" stroke-width="${sw}"
-        stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 90 90)"/>`;
+      const on = x.cat.id === selId;
+      segs += `<circle class="donut-seg ${on ? 'on' : ''}" data-seg="${x.cat.id}" cx="90" cy="90" r="${r}" fill="none"
+        stroke="${x.cat.color}" stroke-width="${on ? sw + 6 : sw}"
+        stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 90 90)"><title>${esc(x.cat.name)}</title></circle>`;
       offset += x.share * C;
     });
   }
-  const top = parts[0];
-  const center = top
-    ? `<text x="90" y="84" text-anchor="middle" class="donut-center-k">${esc(top.cat.emoji)} ${esc(top.cat.name)}</text>
-       <text x="90" y="106" text-anchor="middle" class="donut-center-v num">${Math.round(top.share * 100)}%</text>`
+  const pick = parts.find(x => x.cat.id === selId) || parts[0];
+  const center = pick
+    ? `<text x="90" y="80" text-anchor="middle" class="donut-center-k">${esc(pick.cat.emoji)} ${esc(pick.cat.name)}</text>
+       <text x="90" y="102" text-anchor="middle" class="donut-center-v num">${Math.round(pick.share * 100)}%</text>
+       <text x="90" y="120" text-anchor="middle" class="donut-center-k num">${formatMan(pick.spent)}${pick.spent >= 10000 ? '' : ''}</text>`
     : `<text x="90" y="95" text-anchor="middle" class="donut-center-k">아직 생활비 지출이 없어요</text>`;
   return `<svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="생활비 카테고리별 비중">${segs}${center}</svg>`;
+}
+
+/** 도넛 + 카테고리 목록. 색 막대로 도넛과 목록을 잇는다 */
+function catSectionHTML(s) {
+  const sel = state.homeCat;
+  const rows = s.catRows.map(x => `
+    <div class="cat-row ${x.cat.id === sel ? 'on' : ''}" data-catrow="${x.cat.id}">
+      <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
+      <div class="cat-main">
+        <div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num">${formatWon(x.spent)}원</span></div>
+        <div class="cat-bar"><i style="width:${Math.max(2, Math.round(x.share * 100))}%;background:${x.cat.color}"></i></div>
+        <div class="cat-meta"><span class="cat-pct num" style="color:${x.cat.color}">${Math.round(x.share * 100)}%</span></div>
+      </div>
+    </div>`).join('');
+  // 환급이 지출보다 많은 카테고리는 도넛에 올릴 수 없으므로 아래에 따로 적는다
+  const negRows = s.negRows.map(x => `
+    <div class="cat-row">
+      <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
+      <div class="cat-main">
+        <div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num" style="color:var(--accent)">${formatWon(x.spent)}원</span></div>
+        <div class="cat-meta"><span>받은 돈이 더 많아요</span></div>
+      </div>
+    </div>`).join('');
+  return `
+    <div class="donut-wrap ${sel ? 'picked' : ''}">${donutSVG(s.catRows, sel)}</div>
+    ${s.catRows.length > 1 ? '<div class="cat-hint">도넛이나 항목을 누르면 그 카테고리만 볼 수 있어요</div>' : ''}
+    ${rows || '<div class="empty">+ 버튼을 눌러 첫 지출을 기록해 보세요</div>'}
+    ${negRows}`;
+}
+/** 카테고리 영역만 다시 그린다 (화면 전체를 다시 그리면 스크롤이 튄다) */
+function bindCatSection(s) {
+  const box = $('#cat-section');
+  if (!box) return;
+  const pick = id => {
+    state.homeCat = state.homeCat === id ? null : id;
+    box.innerHTML = catSectionHTML(s);
+    bindCatSection(s);
+  };
+  box.querySelectorAll('[data-seg]').forEach(el => el.onclick = () => pick(el.dataset.seg));
+  box.querySelectorAll('[data-catrow]').forEach(el => el.onclick = () => pick(el.dataset.catrow));
 }
 
 function budgetCardHTML(b) {
@@ -1297,42 +1384,50 @@ function budgetCardHTML(b) {
 /* ---- 누적 지출 선 그래프 ---- */
 const PC = { W: 320, H: 150, top: 16, bottom: 124 };
 function pcScale(series, budget, total) {
-  const ymax = Math.max(budget, series[series.length - 1] || 0) * 1.08 || 1;
+  const ymax = Math.max(budget || 0, series[series.length - 1] || 0) * 1.08 || 1;
   return {
     x: day => day / total * PC.W,
     y: v => PC.bottom - Math.max(0, v) / ymax * (PC.bottom - PC.top),
   };
 }
-function paceChartSVG(series, budget, p, c) {
-  const { x, y } = pcScale(series, budget, p.total);
+/** 누적 지출 선 그래프. budget이 없으면 점선(예산 페이스)을 빼고 그린다.
+ *  isCurrent=false면 끝점 라벨이 '오늘'이 아니라 주기 마지막 날이다 (v3.1.0) */
+function paceChartSVG(series, budget, total, c, isCurrent) {
+  const p = { total };
+  const { x, y } = pcScale(series, budget, total);
   const pts = [[0, y(0)], ...series.map((v, i) => [x(i + 1), y(v)])];
   const line = pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('');
   const area = `${line}L${pts[pts.length - 1][0].toFixed(1)},${PC.bottom}L0,${PC.bottom}Z`;
   const [tx, ty] = pts[pts.length - 1];
   const edge = tx / PC.W;
   const lab = (xx, anchor, text) => `<text x="${xx}" y="${PC.H - 6}" text-anchor="${anchor}" class="pc-axis num">${text}</text>`;
-  return `<svg viewBox="0 0 ${PC.W} ${PC.H}" role="img" aria-label="누적 생활비 ${formatWon(series[series.length - 1] || 0)}원, 예산 페이스 기준 ${formatWon(p.ideal)}원">
+  const endLab = isCurrent ? '오늘' : shortDate(addDays(c.start, series.length - 1));
+  return `<svg viewBox="0 0 ${PC.W} ${PC.H}" role="img" aria-label="누적 생활비 ${formatWon(series[series.length - 1] || 0)}원">
     <line x1="0" x2="${PC.W}" y1="${PC.bottom}" y2="${PC.bottom}" class="pc-base"/>
-    <line x1="0" y1="${y(0)}" x2="${PC.W}" y2="${y(budget)}" class="pc-pace"/>
-    <text x="${PC.W}" y="${y(budget) - 6}" text-anchor="end" class="pc-budget num">예산 ${formatMan(budget)}</text>
+    ${budget ? `<line x1="0" y1="${y(0)}" x2="${PC.W}" y2="${y(budget)}" class="pc-pace"/>
+    <text x="${PC.W}" y="${y(budget) - 6}" text-anchor="end" class="pc-budget num">예산 ${formatMan(budget)}</text>` : ''}
     <path d="${area}" class="pc-area"/>
     <path d="${line}" class="pc-line"/>
     <line id="pc-scrub" x1="0" x2="0" y1="${PC.top}" y2="${PC.bottom}" class="pc-scrub"/>
     <circle cx="${tx.toFixed(1)}" cy="${ty.toFixed(1)}" r="5" class="pc-dot" id="pc-dot"/>
     ${edge > 0.16 ? lab(0, 'start', shortDate(c.start)) : ''}
-    ${lab(Math.min(PC.W - 14, Math.max(14, tx)), 'middle', '오늘')}
-    ${edge < 0.84 ? lab(PC.W, 'end', shortDate(c.end)) : ''}
+    ${lab(Math.min(PC.W - 20, Math.max(20, tx)), 'middle', endLab)}
+    ${edge < 0.8 ? lab(PC.W, 'end', shortDate(c.end)) : ''}
     <rect x="0" y="0" width="${PC.W}" height="${PC.H}" fill="transparent" id="pc-hit"/>
   </svg>`;
 }
-function bindPaceChart(series, budget, p, c) {
+function bindPaceChart(series, budget, total, c, isCurrent) {
   const svg = $('#pace-chart svg'), hit = $('#pc-hit'), scrub = $('#pc-scrub'), dot = $('#pc-dot'), out = $('#pc-readout');
   if (!svg) return;
-  const { x, y } = pcScale(series, budget, p.total);
+  const p = { total };
+  const { x, y } = pcScale(series, budget, total);
   const show = i => {
-    const v = series[i], ideal = roundTo(budget * (i + 1) / p.total, 1000);
+    const v = series[i];
     const isToday = i === series.length - 1;
-    out.innerHTML = `${isToday ? '오늘' : shortDate(addDays(c.start, i))} · 누적 <b>${formatWon(v)}원</b> · 적정 ${formatWon(ideal)}원`;
+    const day = isToday && isCurrent ? '오늘' : shortDate(addDays(c.start, i));
+    out.innerHTML = budget
+      ? `${day} · 누적 <b>${formatWon(v)}원</b> · 적정 ${formatWon(roundTo(budget * (i + 1) / total, 1000))}원`
+      : `${day} · 누적 <b>${formatWon(v)}원</b>`;
     dot.setAttribute('cx', x(i + 1)); dot.setAttribute('cy', y(v));
     scrub.setAttribute('x1', x(i + 1)); scrub.setAttribute('x2', x(i + 1));
     scrub.classList.toggle('on', !isToday);
@@ -1354,58 +1449,64 @@ function gapText(gap) {
   return gap > 0 ? `적정보다 ${amt} 더 썼어요` : `적정보다 ${amt} 덜 썼어요`;
 }
 
+function cycleNavHTML(c, canPrev, canNext) {
+  return `<span class="cyc-nav">
+    <button class="cyc-btn" data-cyc="-1" ${canPrev ? '' : 'disabled'} aria-label="이전 주기">${ICON.back}</button>
+    <span class="cyc-name">${c.name} 생활비</span>
+    <button class="cyc-btn" data-cyc="1" ${canNext ? '' : 'disabled'} aria-label="다음 주기">${ICON.fwd}</button>
+  </span>`;
+}
+
 function renderHome() {
   const today = todayYMD();
-  const b = budgetState(today);
-  const s = homeStats(state.txs, state.cats, today, b.amount);
-  const c = s.cycle, p = s.pace;
-  const up = upcomingFixed(state.fixeds, today);
+  const ref = state.homeRef || today;          // 지난 주기를 볼 때는 그 주기의 마지막 날
+  const isCurrent = !state.homeRef;
+  const c = cycleOf(ref);
+  const bNow = budgetState(today);
+  const budget = isCurrent ? bNow.amount : budgetOfCycle(c.id);
+  const s = homeStats(state.txs, state.cats, ref, budget, today);
+  const p = s.pace;
+  const up = isCurrent ? upcomingFixed(state.fixeds, today) : [];
   const pend = pendingRows().length;
+  const first = earliestCycle(state.txs, today);
+  const canPrev = c.start > first.start;
+  const canNext = !isCurrent;
 
   let delta = '지난 주기 기록이 없어요';
   if (s.change !== null) {
     const diff = s.living - s.prevSame;
     delta = s.change === 0 ? '지난 주기 같은 기간과 같아요'
-      : `지난 주기 같은 기간보다 ${diff > 0 ? '▲' : '▼'}${Math.abs(s.change)}% <span class="num">(${diff > 0 ? '+' : '−'}${formatWon(Math.abs(diff))}원)</span>`;
+      : `지난 주기 ${isCurrent ? '같은 기간' : '전체'}보다 ${diff > 0 ? '▲' : '▼'}${Math.abs(s.change)}% <span class="num">(${diff > 0 ? '+' : '−'}${formatWon(Math.abs(diff))}원)</span>`;
   }
 
-  const gauge = p ? `
-    <section class="section st-${p.level}">
-      <div class="gauge-head"><span>${c.name} 생활비</span>${b.provisional ? '<span class="tag">제안값 적용 중</span>' : `<span class="num">예산 ${formatMan(b.amount)}${b.amount >= 10000 ? '원' : ''}</span>`}</div>
+  // 오른쪽 위: 이번 주기는 예산, 지난 주기는 기간 일수
+  const headRight = isCurrent
+    ? (bNow.provisional ? '<span class="tag">제안값 적용 중</span>' : budget ? `<span class="num">예산 ${formatMan(budget)}${budget >= 10000 ? '원' : ''}</span>` : '')
+    : `<span class="num">${s.elapsed}일</span>`;
+
+  // 아래 문구: 이번 주기는 페이스, 지난 주기는 결과
+  const bottom = isCurrent && p
+    ? `<div class="pace"><b>${p.status}</b> · ${gapText(p.gap)}<br><span class="sub">남은 ${p.daysLeft}일 · 하루 <span class="num">${formatWon(p.daily)}원</span></span></div>`
+    : isCurrent
+      ? `<div class="pace"><span class="sub">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</span></div>`
+      : budget
+        ? `<div class="pace"><b>예산의 ${s.budgetPct}%</b>를 썼어요<br><span class="sub">하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span> · 예산 ${formatMan(budget)}원</span></div>`
+        : `<div class="pace"><b>하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span></b><br><span class="sub">예산을 정하지 않은 주기예요 · <button class="link-btn" id="set-past-budget" style="display:inline;padding:0;font-size:inherit">예산 넣기</button></span></div>`;
+
+  const level = isCurrent && p ? p.level : (budget && s.budgetPct >= 100 ? 'over' : 'calm');
+  const gauge = `
+    <section class="section st-${level}">
+      <div class="gauge-head">${cycleNavHTML(c, canPrev, canNext)}${headRight}</div>
       <div class="gauge-amt num">${formatWon(s.living)}<small>원</small></div>
-      <div class="gauge-of num">${b.provisional ? `예산 ${formatWon(b.amount)}원 · ` : ''}${shortDate(c.start)} – ${shortDate(c.end)}</div>
+      <div class="gauge-of num">${isCurrent && bNow.provisional ? `예산 ${formatWon(budget)}원 · ` : ''}${shortDate(c.start)} – ${shortDate(c.end)}</div>
       <div class="pace-chart" id="pace-chart">
         <div class="readout num" id="pc-readout"></div>
-        ${paceChartSVG(s.series, b.amount, p, c)}
-        <div class="legend"><span><i></i>누적 지출</span><span><i class="dash"></i>예산 페이스</span></div>
+        ${paceChartSVG(s.series, budget, cycleDays(c), c, isCurrent)}
+        <div class="legend"><span><i></i>누적 지출</span>${budget ? '<span><i class="dash"></i>예산 페이스</span>' : ''}</div>
       </div>
-      <div class="pace"><b>${p.status}</b> · ${gapText(p.gap)}<br><span class="sub">남은 ${p.daysLeft}일 · 하루 <span class="num">${formatWon(p.daily)}원</span></span></div>
-      <div class="delta-line">${delta}</div>
-    </section>` : `
-    <section class="section">
-      <div class="gauge-head"><span>${c.name} 생활비</span><span class="num">${shortDate(c.start)} – ${shortDate(c.end)}</span></div>
-      <div class="gauge-amt num">${formatWon(s.living)}<small>원</small></div>
-      <div class="gauge-of">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</div>
+      ${bottom}
       <div class="delta-line">${delta}</div>
     </section>`;
-
-  const rows = s.catRows.map(x => `
-    <div class="cat-row">
-      <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
-      <div class="cat-main">
-        <div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num">${formatWon(x.spent)}원</span></div>
-        <div class="cat-meta"><span class="num">${Math.round(x.share * 100)}%</span></div>
-      </div>
-    </div>`).join('');
-  // 환급이 지출보다 많은 카테고리는 도넛에 올릴 수 없으므로 아래에 따로 적는다 (v3.0.0)
-  const negRows = s.negRows.map(x => `
-    <div class="cat-row">
-      <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
-      <div class="cat-main">
-        <div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num" style="color:var(--accent)">${formatWon(x.spent)}원</span></div>
-        <div class="cat-meta"><span>받은 돈이 더 많아요</span></div>
-      </div>
-    </div>`).join('');
 
   $('#view').innerHTML = `
     <div class="topbar"><h1>홈</h1><button class="icon-btn" id="open-settings" aria-label="설정">${ICON.gear}</button></div>
@@ -1413,42 +1514,58 @@ function renderHome() {
       <span style="font-size:24px">📋</span>
       <span class="grow"><b>확인할 내역 ${pend}건</b><small>가져온 파일에서 판단이 필요해요</small></span>
       ${ICON.chev}</div>` : ''}
-    ${budgetCardHTML(b)}
+    ${isCurrent ? budgetCardHTML(bNow) : ''}
     ${gauge}
     <div class="stats two">
       <div class="stat"><div class="k">특별지출 · ${s.half.label}</div><div class="v num">${formatWon(s.special)}원</div><div class="k2 num">${shortDate(s.half.start)} – ${shortDate(s.half.end)}</div></div>
-      <div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div><div class="k2">생활비 + 특별지출</div></div>
+      ${isCurrent
+        ? `<div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div><div class="k2">생활비 + 특별지출</div></div>`
+        : `<div class="stat"><div class="k">하루 평균</div><div class="v num">${formatWon(s.avgDaily)}원</div><div class="k2">생활비 ${s.elapsed}일 기준</div></div>`}
     </div>
     <section class="section">
       <h2 class="section-title">생활비 카테고리</h2>
-      <div class="donut-wrap">${donutSVG(s.catRows)}</div>
-      ${rows || '<div class="empty">+ 버튼을 눌러 첫 지출을 기록해 보세요</div>'}
-      ${negRows}
+      <div id="cat-section">${catSectionHTML(s)}</div>
     </section>
     ${up.length ? `<section class="section">
       <div class="sec-head"><h2 class="section-title">다가오는 출금</h2><button class="link-btn" id="go-fixed">전체 보기</button></div>
       ${up.map(x => fixedRowHTML(x, 'home')).join('')}
-    </section>` : ''}`;
+    </section>` : ''}
+    ${isCurrent ? '' : '<div class="hint" style="text-align:center;margin:0 24px">지난 주기를 보고 있어요</div>'}`;
 
   $('#open-settings').onclick = () => openSettings();
   const go = $('#go-fixed');
   if (go) go.onclick = () => switchTab('fixed');
   const gp = $('#go-pending');
   if (gp) gp.onclick = () => openPending();
+  $('#view').querySelectorAll('[data-cyc]').forEach(b2 => b2.onclick = () => {
+    if (b2.disabled) return;
+    state.homeRef = shiftCycleRef(ref, Number(b2.dataset.cyc), today);
+    state.homeCat = null;
+    renderHome();
+    $('#view').scrollTop = 0;
+  });
+  const pb = $('#set-past-budget');
+  if (pb) pb.onclick = () => openAmountSheet({
+    title: `${c.name} 생활비 예산`,
+    initial: 0,
+    hint: '지난 주기에도 예산을 넣어 두면 얼마나 썼는지 비교할 수 있어요',
+    onSave: async n => { await saveBudget(c.id, n, true, null); renderHome(); toast('예산을 저장했어요'); },
+  });
   $('#view').querySelectorAll('[data-fixed]').forEach(r => r.onclick = () => openFixedEditor(state.fixeds.find(f => f.id === r.dataset.fixed)));
-  if (p) bindPaceChart(s.series, b.amount, p, c);
+  bindCatSection(s);
+  bindPaceChart(s.series, budget, cycleDays(c), c, isCurrent);
   const v = $('#view');
   const inputBtn = v.querySelector('[data-budget-input]');
-  if (inputBtn) inputBtn.onclick = () => openBudgetInput(b);
+  if (inputBtn) inputBtn.onclick = () => openBudgetInput(bNow);
   const minus = v.querySelector('[data-budget-minus]');
   if (minus) minus.onclick = async () => {
-    await saveBudget(b.cycle.id, minus5(b.amount), false, b.suggestion.amount);
+    await saveBudget(bNow.cycle.id, minus5(bNow.amount), false, bNow.suggestion.amount);
     renderHome();
   };
   const ok = v.querySelector('[data-budget-confirm]');
   if (ok) ok.onclick = async () => {
-    await saveBudget(b.cycle.id, b.amount, true, b.suggestion.amount);
-    renderHome(); toast(`생활비 예산 ${formatMan(b.amount)}원으로 확정했어요`);
+    await saveBudget(bNow.cycle.id, bNow.amount, true, bNow.suggestion.amount);
+    renderHome(); toast(`생활비 예산 ${formatMan(bNow.amount)}원으로 확정했어요`);
   };
 }
 
@@ -2434,7 +2551,9 @@ async function init() {
   // 날짜가 바뀌었을 수 있으니 앱으로 돌아올 때 다시 그린다
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) return;
-    if (!document.querySelector('.sheet,.page')) render();
+    if (document.querySelector('.sheet,.page')) return;
+    state.homeRef = null; // 앱을 다시 열면 언제나 이번 주기부터
+    render();
   });
 }
 

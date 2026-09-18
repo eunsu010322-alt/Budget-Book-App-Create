@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -255,5 +255,27 @@ eq('첫 행', [iparsed[0].date, iparsed[0].time, iparsed[0].type, iparsed[0].con
 eq('빈 날짜 줄은 건너뜀', iparsed.every(r => !!r.date), true);
 eq('공유 문자열', L.parseSharedStrings('<sst><si><t>가</t></si><si><r><t>나</t></r><r><t>다</t></r></si></sst>'), ['가', '나다']);
 eq('시트 셀 읽기', L.parseSheet('<row r="1"><c r="A1" t="s"><v>0</v></c><c r="C1"><v>-4900</v></c></row>', ['식비']), [['식비', undefined, -4900]]);
+
+
+console.log('[주기 넘기기 (v3.1.0)]');
+const navTxs=[tx('2026-06-30',1000),tx('2026-09-15',2000)];
+eq('가장 이른 주기',L.earliestCycle(navTxs,'2026-09-18').id,'2026-06');
+eq('내역이 없으면 이번 주기',L.earliestCycle([],'2026-09-18').id,'2026-08');
+eq('이전 주기로 (마지막 날 기준)',L.shiftCycleRef('2026-09-18',-1,'2026-09-18'),'2026-08-24');
+eq('두 번 이전',L.shiftCycleRef(L.shiftCycleRef('2026-09-18',-1,'2026-09-18'),-1,'2026-09-18'),'2026-07-24');
+eq('다음으로 눌러 이번 주기면 null',L.shiftCycleRef('2026-08-24',1,'2026-09-18'),null);
+eq('연말 경계 이전',L.shiftCycleRef('2027-01-10',-1,'2027-01-10'),'2026-12-24');
+const pastRef=L.shiftCycleRef('2026-09-18',-1,'2026-09-18');
+const pastTxs=[tx('2026-08-01',100000),tx('2026-08-10',200000),tx('2026-08-20',300000),tx('2026-09-01',50000)];
+const ps=L.homeStats(pastTxs,cats,pastRef,600000,'2026-09-18');
+eq('지난 주기 전체 합계',ps.living,600000);
+eq('지난 주기는 주기 전체 일수',ps.elapsed,L.cycleDays(L.cycleOf(pastRef)));
+eq('예산 대비 100%',ps.budgetPct,100);
+eq('하루 평균',ps.avgDaily,Math.floor(600000/ps.elapsed));
+eq('누적 그래프는 주기 끝까지',ps.series.length,ps.elapsed);
+eq('지난 주기 볼 때 오늘 쓴 돈은 0',ps.today,0);
+eq('예산이 없으면 페이스 없음',L.homeStats(pastTxs,cats,pastRef,null,'2026-09-18').pace,null);
+eq('예산이 없으면 비율도 없음',L.homeStats(pastTxs,cats,pastRef,null,'2026-09-18').budgetPct,null);
+eq('이번 주기는 오늘까지만 누적',L.homeStats(pastTxs,cats,'2026-09-18',null).series.length,L.cycleOf('2026-09-18').start==='2026-08-25'?25:0);
 
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);
