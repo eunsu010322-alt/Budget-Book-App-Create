@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES,eventForDate,eventIdFor,retagEvents,catBreakdown,eventStats,eventList,plannedSpecial,monthlySpecial,halfStats,shiftHalfRef,earliestHalf,cycleIncome,cycleSaving,savingTrend,suggestHalfLimit,budgetPlan,budgetChoices,pctText,nextCycle,addDays,diffDays};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,coverageStart,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES,eventForDate,eventIdFor,retagEvents,catBreakdown,eventStats,eventList,plannedSpecial,monthlySpecial,halfStats,shiftHalfRef,earliestHalf,cycleIncome,cycleSaving,savingTrend,suggestHalfLimit,budgetPlan,budgetChoices,pctText,nextCycle,addDays,diffDays};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -456,5 +456,27 @@ eq('수입이 없으면 비율 없음', L.budgetPlan(0, 0.45, 0, 0).rate, null);
 eq('생활비 제안 두 가지', L.budgetChoices(3200000, 0.45, 1560000, { amount: 1500000 }), { fromGoal: 1500000, fromHistory: 1500000 });
 eq('실적이 없으면 목표 역산만', L.budgetChoices(3200000, 0.45, 1560000, null).fromHistory, null);
 eq('비율 표기', [L.pctText(0.45), L.pctText(1340000 / 3200000), L.pctText(null)], ['45.0%', '41.9%', '-']);
+
+console.log('[실적 기준선 (v4.0.1)]');
+eq('설치일이 더 이르면 설치일',L.coverageStart('2026-01-05','2026-03-01','2026-09-21'),'2026-01-05');
+eq('가져온 내역이 더 이르면 그 날짜',L.coverageStart('2026-09-16','2026-01-10','2026-09-21'),'2026-01-10');
+eq('설치일이 없으면 내역 날짜',L.coverageStart(null,'2026-01-10','2026-09-21'),'2026-01-10');
+eq('둘 다 없으면 오늘',L.coverageStart(null,null,'2026-09-21'),'2026-09-21');
+// 5월 주기 첫날(5/25)부터 채워져 있는 상황
+const covTx=[tx('2026-05-25',1400000),tx('2026-06-26',1500000),tx('2026-07-26',1600000),tx('2026-08-26',700000)];
+eq('설치일 기준이면 실적이 없다 (v4.0.0 버그)',L.suggestBudget(covTx,'2026-09-21','2026-09-16'),null);
+eq('가져온 내역까지 거슬러 올라가면 3개 주기',L.suggestBudget(covTx,'2026-09-21',L.coverageStart('2026-09-16','2026-05-25','2026-09-21')),{amount:1500000,median:1500000,count:3});
+eq('파일 첫 주기가 반쪽이면 제외 (4/26 시작 → 4월 주기 빠짐)',L.suggestBudget([tx('2026-04-26',9000000),...covTx],'2026-09-21',L.coverageStart(null,'2026-04-26','2026-09-21')),{amount:1500000,median:1500000,count:3});
+
+console.log('[확인 대기함 분류 (v4.0.1)]');
+const pCats=[{id:'a',name:'식비'},{id:'z',name:'기타',isFallback:true}];
+const pRow={id:'r1',r:{date:'2026-09-10',time:'12:00',content:'김*훈',type:'이체'},amount:-350000,categoryName:'식비'};
+const pSpecial=L.makeImportTx(pRow,pCats,T,'z','t9',1,'special');
+eq('받은 돈(음수)도 특별지출로 고를 수 있다',[pSpecial.kind,pSpecial.kindSource,pSpecial.amount],['special','asked',-350000]);
+eq('그 뒤 recomputeKind를 돌리면 생활비로 되돌아간다 → 그래서 돌리지 않는다',L.recomputeKind(pSpecial,{a:{id:'a'},z:{id:'z'}},T).kind,'living');
+const pLiving=L.makeImportTx(pRow,pCats,T,'z','t10',1,'living');
+eq('생활비를 고르면 생활비로 남는다',[pLiving.kind,pLiving.kindSource],['living','asked']);
+const pBig=L.makeImportTx({...pRow,amount:1200000},pCats,T,'z','t11',1,'living');
+eq('큰 지출을 생활비로 골라도 유지',[pBig.kind,pBig.kindSource],['living','asked']);
 
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);

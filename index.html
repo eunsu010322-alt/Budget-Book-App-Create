@@ -466,7 +466,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '4.0.0';
+const APP_VERSION = '4.0.1';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -561,8 +561,15 @@ function reassignCategory(txs, fromId, toId, catMap, threshold) {
     .map(t => recomputeKind({ ...t, categoryId: toId }, catMap, threshold));
 }
 
+/** 실적을 어디까지 거슬러 셀지 정하는 기준선 (v4.0.1).
+ *  설치일만 쓰면 파일로 가져온 설치 이전 주기가 전부 빠진다. 설치일과 가장 이른 내역 날짜 중 이른 쪽을 쓴다.
+ *  주기 시작일이 이 날짜보다 앞서면 후보에서 빠지므로, 파일 첫 주기처럼 반쪽만 있는 주기는 그대로 걸러진다. */
+function coverageStart(installedYMD, earliestTxYMD, today) {
+  return [installedYMD, earliestTxYMD].filter(Boolean).sort()[0] || today;
+}
+
 /* ---- 생활비 예산 제안 ----
-   앱 설치 뒤에 시작해 이미 끝난 주기 중 최근 3개의 생활비 중앙값 → 10만원 단위 반올림 */
+   기준선(coverageStart) 뒤에 시작해 이미 끝난 주기 중 최근 3개의 생활비 중앙값 → 10만원 단위 반올림 */
 function suggestBudget(txs, today, installYMD) {
   const sums = [];
   let c = prevCycle(cycleOf(today));
@@ -1159,9 +1166,9 @@ function makeImportTx(x, cats, threshold, fallbackId, id, now, kind) {
 }
 /** 확인 대기함에 보여줄 설명 */
 const PENDING_WHY = {
-  'big-transfer': '30만원 이상 이체예요. 생활비에 넣을까요?',
+  'big-transfer': '30만원 이상 이체예요. 어디에 넣을까요?',
   'big-spend': '큰 지출이에요. 특별지출로 분류할까요?',
-  cash: '현금 인출이에요. 생활비에 넣을까요?',
+  cash: '현금 인출이에요. 어디에 넣을까요?',
   'unknown-type': '어떻게 처리할지 모르겠어요',
 };
 /** 가져오기 묶음 요약 문구용 숫자 */
@@ -3112,14 +3119,13 @@ function openPending() {
     }
     const row = queue[i];
     const r = row.raw;
-    const isSpend = row.reason === 'big-spend';
-    const picks = isSpend
-      ? [['living', '생활비'], ['special', '특별지출'], ['skip', '제외']]
-      : [['living', '생활비에 넣기'], ['skip', '제외']];
+    // 어떤 이유로 올라온 건이든 생활비·특별지출·제외 셋 다 고를 수 있다.
+    // 여행비를 대신 내고 정산받은 돈(이체, 음수)은 특별지출에 넣어야 그 여행 결제와 상쇄된다.
+    const picks = [['living', '생활비'], ['special', '특별지출'], ['skip', '제외']];
     $('#pd-body', el).innerHTML = `
       <div class="entry-body">
         <div class="pend-amt num ${row.amount < 0 ? '' : ''}" style="${row.amount < 0 ? 'color:var(--accent)' : ''}">${formatWon(row.amount)}원</div>
-        <div class="pend-why">${esc(PENDING_WHY[row.reason] || '어떻게 처리할까요?')}</div>
+        <div class="pend-why">${esc(PENDING_WHY[row.reason] || '어떻게 처리할까요?')}${row.amount < 0 ? '<br>받은 돈이라 고른 쪽 합계에서 빠져요' : ''}</div>
         ${rawRowHTML(r)}
         <div class="pick ${picks.length === 2 ? 'two' : ''}" id="pd-pick" style="margin-top:14px">
           ${picks.map(([v, t]) => `<button data-pick="${v}">${t}</button>`).join('')}
@@ -3170,8 +3176,13 @@ async function resolvePending(row, pick, catId, learn) {
   if (pick !== 'skip') {
     const cats = state.cats;
     const x = { id: row.id, r: row.raw, amount: row.amount, categoryName: (cats.find(c => c.id === catId) || {}).name };
-    tx = makeImportTx(x, cats, state.threshold, fallbackId(), uid(), now, pick === 'special' ? 'special' : (row.reason === 'big-spend' ? 'living' : null));
-    tx = recomputeKind(withEvent(tx), catMap(), state.threshold);
+    // 확인 대기함에서 직접 고른 분류는 그대로 지킨다.
+    // recomputeKind를 그냥 돌리면 기준 금액 아래인 건(특히 받은 돈 = 음수)이 생활비로 되돌아간다.
+    // 이벤트에 묶인 건만 4단계 규칙대로 특별지출로 올린다.
+    const chosen = pick === 'special' ? 'special' : 'living';
+    tx = withEvent(makeImportTx(x, cats, state.threshold, fallbackId(), uid(), now, chosen));
+    tx.kind = tx.eventId ? 'special' : chosen;
+    tx.kindSource = 'asked';
     next.transactionId = tx.id;
     next.categoryName = x.categoryName;
   }
@@ -3650,9 +3661,14 @@ async function init() {
   if (bsal) state.baseSalary = bsal.value || 0;
   const sg2 = await dbGet('meta', 'savingsGoal');
   if (sg2 && sg2.value) state.savingsGoal = sg2.value;
+  // 실적(생활비 중앙값·저축률)을 셀 때 어디까지 거슬러 올라갈지 정하는 기준선.
+  // 설치일만 쓰면 파일로 가져온 설치 이전 주기가 전부 빠진다 (v4.0.1에서 고침).
+  // 설치일과 가장 이른 내역 날짜 중 '이른 쪽'을 쓴다.
+  // 주기 시작일이 이 날짜보다 앞서면 후보에서 빠지므로, 파일 첫 주기처럼 반쪽만 있는 주기는 그대로 걸러진다.
   const inst = await dbGet('meta', 'installedAt');
+  const instYMD = inst ? toYMD(new Date(inst.value)) : null;
   const earliest = state.txs.map(t => t.date).sort()[0];
-  state.installYMD = inst ? toYMD(new Date(inst.value)) : (earliest || todayYMD());
+  state.installYMD = coverageStart(instYMD, earliest, todayYMD());
   render();
 
   // 날짜가 바뀌었을 수 있으니 앱으로 돌아올 때 다시 그린다
