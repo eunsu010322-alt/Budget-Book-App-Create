@@ -97,6 +97,14 @@ input{font:inherit;font-size:16px;color:var(--text)}
 .stat .k2{font-size:11px;color:var(--faint);margin-top:1px}
 .stat .v{font-size:17px;font-weight:700;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .stat .v.neg{color:var(--danger)}
+.stat .v.warn{color:var(--warn)}
+.stats.one{grid-template-columns:1fr;margin-top:0}
+.stat-link{display:block;width:100%;text-align:left;position:relative;padding-right:40px}
+.stat-link:active{opacity:.7}
+.stat-link svg{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--faint)}
+.gauge-link{display:flex;align-items:center;gap:2px;text-align:left}
+.gauge-link svg{width:22px;height:22px;color:var(--faint);margin-left:2px}
+.gauge-link:active{opacity:.6}
 .stat .v.muted{font-size:14px;font-weight:600;color:var(--accent)}
 .donut-wrap{display:flex;justify-content:center;padding:4px 0 8px}
 .donut-center-k{font-size:12px;fill:var(--sub)}
@@ -180,7 +188,7 @@ body.sel-mode #tabbar, body.sel-mode #fab{display:none}
 .due-card b{font-size:16px;font-weight:600;display:block}
 .due-card small{font-size:13px;opacity:.85}
 
-/* ---------- 준비 중 화면 ---------- */
+/* ---------- 빈 화면 안내 ---------- */
 .placeholder{text-align:center;color:var(--sub);padding:80px 32px}
 .placeholder .big{font-size:48px;margin-bottom:12px}
 .placeholder b{display:block;color:var(--text);font-size:18px;margin-bottom:6px}
@@ -416,14 +424,7 @@ button.list-row:active{opacity:.6}
 .stepper button:active{opacity:.6}
 .stepper button:disabled{opacity:.3}
 .stepper .v{min-width:96px;text-align:right;font-weight:700;font-size:16px}
-.mbars{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;align-items:end;height:92px;margin-top:6px}
-.mb{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;min-width:0}
-.mb i{display:block;width:100%;max-width:26px;border-radius:5px 5px 0 0;background:var(--accent);min-height:3px;transition:height .35s ease}
-.mb.zero i{background:var(--line)}
-.mb.now i{background:var(--text)}
-.mb span{font-size:11px;color:var(--sub);white-space:nowrap}
-.mb small{font-size:10px;color:var(--faint);white-space:nowrap}
-.big-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.big-row{display:flex;align-items:center;gap:12px;padding:9px 4px;border-bottom:1px solid var(--line);border-radius:0}
 .big-row:last-child{border-bottom:0}
 .big-row .grow{flex:1;min-width:0}
 .big-row .t{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -437,6 +438,11 @@ button.list-row:active{opacity:.6}
 .rate-line{font-size:14px;color:var(--sub);margin-top:4px}
 .rate-line b{color:var(--text);font-weight:600}
 .est{font-size:11px;font-weight:600;color:var(--warn);background:rgba(240,140,0,.14);padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:1px}
+.est.neutral{color:var(--accent);background:var(--accent-weak)}
+.plan-link{width:100%;text-align:left}
+.plan-link:active{opacity:.6}
+.plan-link .v{display:flex;align-items:center;gap:2px}
+.plan-link svg{color:var(--faint)}
 .extra-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:15px}
 .extra-row .grow{flex:1;min-width:0}
 .dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
@@ -452,9 +458,9 @@ button.list-row:active{opacity:.6}
 .rp-row:last-of-type{border-bottom:0}
 .rp-row:active{opacity:.6}
 .rp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
-.rp-top .t{font-size:15px;font-weight:600;white-space:nowrap}
+.rp-top .t{font-size:15px;font-weight:600;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
 .rp-top .t small{font-size:12px;font-weight:400;color:var(--sub);margin-left:4px}
-.rp-top .a{font-size:15px;font-weight:600;white-space:nowrap}
+.rp-top .a{font-size:15px;font-weight:600;white-space:nowrap;flex:none}
 .rp-top .a.bad{color:var(--danger)}
 .rp-sub{font-size:13px;color:var(--sub);margin-top:2px;line-height:1.5}
 .rp-sub .over{color:var(--danger)}
@@ -462,7 +468,8 @@ button.list-row:active{opacity:.6}
 #toast{
   position:fixed;left:50%;z-index:60;bottom:calc(var(--safe-bottom) + 150px);transform:translate(-50%,20px);
   background:rgba(25,31,40,.92);color:#fff;padding:12px 20px;border-radius:24px;font-size:15px;
-  opacity:0;pointer-events:none;transition:all .25s ease;white-space:nowrap;
+  opacity:0;pointer-events:none;transition:all .25s ease;
+  width:max-content;max-width:calc(100% - 32px);text-align:center;
 }
 #toast.show{opacity:1;transform:translate(-50%,0)}
 </style>
@@ -486,7 +493,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '5.0.0';
+const APP_VERSION = '6.0.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -539,9 +546,11 @@ function isSpecial(t) { return isCounted(t) && t.kind === 'special'; }
 function sumAmount(list) { return list.reduce((s, t) => s + t.amount, 0); }
 function changeRate(cur, prev) { return prev > 0 ? Math.round((cur - prev) / prev * 100) : null; }
 function formatWon(n) { return Math.round(n).toLocaleString('ko-KR'); }
-/** 1,510,000 → "151만", 445,000 → "44.5만" */
+/** 1,510,000 → "151만", 1,734,000 → "173만", 445,000 → "44.5만"
+ *  100만 이상은 소수를 붙이지 않는다 (v6.0.0). 보조 숫자라 만 단위면 충분하다 */
 function formatMan(n) {
   if (Math.abs(n) < 10000) return `${formatWon(n)}원`;
+  if (Math.abs(n) >= 1000000) return `${Math.round(n / 10000).toLocaleString('ko-KR')}만`;
   return `${(Math.round(n / 1000) / 10).toLocaleString('ko-KR')}만`;
 }
 function roundTo(n, unit) { return Math.round(n / unit) * unit; }
@@ -614,7 +623,6 @@ function suggestBudget(txs, today, installYMD) {
   if (amount <= 0) return null;
   return { amount, median: med, count: sums.length };
 }
-function minus5(v) { return Math.max(10000, roundTo(v * 0.95, 10000)); }
 
 /* ---- 페이스 ----
    차이(%p) = 지출률 − 날짜 진행률
@@ -655,13 +663,18 @@ function cumulativeSeries(txs, c, today) {
 /** 홈 화면 숫자 전부 계산.
  *  ref     = 기준일. 이 날짜가 속한 주기를 보여준다. 지난 주기를 볼 때는 그 주기의 마지막 날을 넣는다 (v3.1.0)
  *  budget  = 그 주기의 생활비 예산 (없으면 null)
- *  todayY  = 오늘 (안 넣으면 ref와 같다). '오늘 쓴 돈'에만 쓴다 */
-function homeStats(txs, categories, ref, budget, todayY) {
+ *  todayY  = 오늘 (안 넣으면 ref와 같다). '오늘 쓴 돈'에만 쓴다
+ *  asOfY   = 내역이 어디까지 들어와 있는지 (v6.0.0, dataAsOf). 페이스·그래프·일수를 이 날짜까지로 센다.
+ *            파일을 7일마다 가져오면 오늘 기준 페이스는 가져오기 직전엔 '여유', 직후엔 '빠름'으로 튄다.
+ *            이번 주기 시작보다 앞이면 noData=true (새 주기 내역이 아직 없다) */
+function homeStats(txs, categories, ref, budget, todayY, asOfY) {
   const today = todayY || ref;
   const c = cycleOf(ref), p = prevCycle(c);
+  const noData = !!(asOfY && asOfY < c.start);
+  const upto = asOfY && asOfY < ref ? (noData ? c.start : asOfY) : ref;
   const cur = txs.filter(t => isCounted(t) && inRange(t.date, c.start, c.end));
   const living = cur.filter(isLiving);
-  const elapsed = diffDays(c.start, ref) + 1;
+  const elapsed = diffDays(c.start, upto) + 1;
   const pSameEnd = [addDays(p.start, elapsed - 1), p.end].sort()[0];
   const prevSame = sumAmount(txs.filter(t => isLiving(t) && inRange(t.date, p.start, pSameEnd)));
   const livingTotal = sumAmount(living);
@@ -680,18 +693,28 @@ function homeStats(txs, categories, ref, budget, todayY) {
     .sort((a, b) => a.spent - b.spent);
 
   return {
-    cycle: c, catRows, negRows, elapsed,
+    cycle: c, catRows, negRows, elapsed, asOf: upto, noData,
     living: livingTotal,
     half: halfOf(ref),
     special: sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, halfOf(ref).start, halfOf(ref).end))),
-    series: cumulativeSeries(txs, c, ref),
+    series: cumulativeSeries(txs, c, upto),
     today: sumAmount(cur.filter(t => t.date === today)),
     avgDaily: elapsed > 0 ? Math.floor(livingTotal / elapsed) : 0,
     budgetPct: budget ? Math.round(livingTotal / budget * 100) : null,
     prevSame, change: changeRate(livingTotal, prevSame),
     daysLeft: cycleDays(c) - elapsed + 1,
-    pace: budget ? paceOf(livingTotal, budget, ref, c) : null,
+    pace: budget && !noData ? paceOf(livingTotal, budget, upto, c) : null,
   };
+}
+/** 내역이 어디까지 들어와 있는지 (v6.0.0).
+ *  마지막으로 가져온 파일의 끝 날짜와 직접 입력한 가장 늦은 날짜 중 늦은 쪽. 오늘을 넘지 않는다.
+ *  한 번도 가져오지 않았으면 오늘 (직접 입력만 쓰는 경우) */
+function dataAsOf(batches, txs, today) {
+  if (!batches || !batches.length) return today;
+  const fileTo = batches.map(b => b.to).filter(Boolean).sort().pop() || null;
+  const manual = (txs || []).filter(t => t.method === 'manual').map(t => t.date).sort().pop() || null;
+  const d = [fileTo, manual].filter(Boolean).sort().pop();
+  return d && d < today ? d : today;
 }
 
 /* ---- 가져오기 알림 (v3.2.0) ----
@@ -1094,9 +1117,6 @@ function rowId(r) { return `${r.date}_${hashStr(rowKey(r))}`; }
  *  미분류 = '입금 내역' 같은 출처 불명 = 급여 외 소득
  *  남는 것은 대분류 '이체' 하나뿐이고, 그것이 타인과 주고받은 돈(N빵)이다 */
 const BS_SELF_TRANSFER = ['내계좌이체', '카드대금', '저축', '투자', '현금', '대출', '미분류'];
-/** 타입 '수입'은 전부 뺀다. 급여도, 이자·캐시백·잡수입도 생활비 계산을 흐린다.
- *  N빵으로 받은 돈은 타입 '이체'로 들어오므로 여기서 빠져도 문제없다 */
-const BS_INCOME_SKIP = null;
 /** 이체·수입의 소액은 무시한다 (1원 입금, 2원 적립 같은 잡다한 것). 지출은 금액과 상관없이 기록한다 */
 const BS_MIN_TRANSFER = 1000;
 /** 타인 이체가 이 금액 이상이면 확인 대기함으로 보낸다.
@@ -1407,14 +1427,36 @@ function earliestHalf(txs, today) {
    계좌 잔고는 알 수 없다 (가져오기에서 내계좌이체·저축·투자를 전부 뺐다).
    v4에서는 그래서 '안 쓴 돈'으로 불렀다. v5.0.0에서 사용자 요청으로 화면 이름을 '저축'으로 바꿨다.
    뜻은 같다: 저축 = 수입 − (생활비 + 그 주기 특별지출). 계좌 잔고가 아니다 (화면 안내 문구로 밝힌다) */
-/** 그 주기 수입. 주기에 기록이 없으면 기본 급여를 소급 적용하고 estimated=true를 붙인다 */
+/** 그 주기 수입. 주기에 기록이 없으면 기본 급여를 소급 적용하고 estimated=true를 붙인다.
+ *  auto=true 기록(기본 급여를 바꿀 때 옛 금액으로 고정해 둔 것, v6.0.0)도 사용자가 넣은 게 아니므로 추정이다 */
 function cycleIncome(incomes, cycleId, baseSalary) {
   const rec = (incomes || {})[cycleId];
   const has = !!(rec && rec.salary != null);
   const salary = has ? rec.salary : (baseSalary || 0);
   const extras = (rec && rec.extras) || [];
   const extra = extras.reduce((s, x) => s + (x.amount || 0), 0);
-  return { cycleId, salary, extras, extra, total: salary + extra, estimated: !has };
+  return { cycleId, salary, extras, extra, total: salary + extra, estimated: !has || !!rec.auto };
+}
+/** 기본 급여를 바꾸기 전에, 급여를 넣지 않은 '끝난' 주기를 옛 금액으로 고정한다 (v6.0.0).
+ *  기록이 없는 주기는 기본 급여를 소급하므로, 그냥 바꾸면 지난 저축률이 같이 바뀐다.
+ *  sinceYMD(기록 시작)보다 앞에서 끝난 주기는 건드리지 않는다 (halfReport와 같은 기준).
+ *  돌려준 기록을 cycleIncomes에 넣기만 한다. 지우는 것은 없다 */
+function freezeIncomes(incomes, today, sinceYMD, oldBase, now) {
+  if (!(oldBase > 0)) return [];
+  const floor = sinceYMD || today;
+  const out = [];
+  let c = prevCycle(cycleOf(today));
+  while (c.end >= floor) {
+    if (!(incomes || {})[c.id]) out.push({ cycleId: c.id, salary: oldBase, extras: [], auto: true, editedAt: now });
+    c = prevCycle(c);
+  }
+  return out;
+}
+/** 그 반기의 목표 저축률 (v6.0.0). 예산 짜기에서 저장할 때 halfLimits에 같이 남긴다.
+ *  목표를 바꿔도 지난 반기 결과가 새 목표로 다시 채점되지 않게 한다. 없으면 지금 목표 */
+function goalOfHalf(halfLimits, halfId, fallback) {
+  const r = (halfLimits || {})[halfId];
+  return r && r.goal != null ? r.goal : fallback;
 }
 /** 한 주기의 저축(수입 − 쓴 돈). 특별지출은 그 주기에 실제로 발생한 것만 뺀다 */
 function cycleSaving(txs, incomes, cycleId, baseSalary) {
@@ -1456,6 +1498,9 @@ function suggestHalfLimit(income, goalRate, living) {
   return Math.max(0, roundTo(monthly * 6, 10000));
 }
 /** 예산 한 벌의 결과: 남는 돈, 이 예산대로 갔을 때 저축과 비율 */
+/** 반기 한도를 만원 단위로 반올림하면 ÷6 한 월 금액에 최대 833원 오차가 남는다.
+ *  v5.0.0까지는 이 오차로 '목표보다 433원 더 쓰는 예산'이라는 빨간 경고가 떴다 (급여가 딱 떨어지지 않으면 약 절반) */
+const PLAN_ROUNDING = 1000;
 function budgetPlan(income, goalRate, living, halfLimit) {
   const specialMonthly = Math.round((halfLimit || 0) / 6);
   const spendable = Math.round(income * (1 - goalRate));
@@ -1463,14 +1508,9 @@ function budgetPlan(income, goalRate, living, halfLimit) {
   const saved = income - planned;
   return {
     income, goalRate, living, halfLimit: halfLimit || 0, specialMonthly, spendable, planned,
-    rest: spendable - planned, ok: spendable - planned >= 0,
+    rest: spendable - planned, ok: spendable - planned >= -PLAN_ROUNDING,
     saved, rate: income > 0 ? saved / income : null, yearly: saved * 12,
   };
-}
-/** 생활비 예산 제안값 두 개를 나란히 (목표 역산 / 과거 실적) */
-function budgetChoices(income, goalRate, halfLimit, suggestion) {
-  const fromGoal = Math.max(0, roundTo(Math.round(income * (1 - goalRate)) - Math.round((halfLimit || 0) / 6), 10000));
-  return { fromGoal, fromHistory: suggestion ? suggestion.amount : null };
 }
 const pctText = r => (r === null || r === undefined ? '-' : `${(Math.round(r * 1000) / 10).toFixed(1)}%`);
 
@@ -1484,7 +1524,8 @@ const pctText = r => (r === null || r === undefined ? '-' : `${(Math.round(r * 1
  *  total   = 수입이 있는 주기만 합친 {income, living, special, spent, saved, rate}
  *  gap     = 실제 저축률 − 목표 (%p가 아니라 비율. 0.031 = 3.1%p)
  *  overrun = livingOverrun 결과 (생활비 초과분)
- *  special = 반기 특별지출 전체(오늘까지) · 한도 · 남은 돈
+ *  special = done(끝난 주기 합계, 저축률과 같은 기준) · spent(반기 전체) · limit · effLimit · left
+ *            left는 특별지출 탭 halfStats.left와 같은 값이다 (한도 − 생활비 초과 − 반기 전체) (v6.0.0)
  *  sinceYMD 이전에 끝난 주기는 넣지 않는다 (기록이 없던 시절) */
 function halfReport(txs, incomes, budgets, h, today, baseSalary, sinceYMD, limit, goal) {
   const floor = sinceYMD || txs.map(t => t.date).sort()[0] || today;
@@ -1504,15 +1545,17 @@ function halfReport(txs, incomes, budgets, h, today, baseSalary, sinceYMD, limit
   const income = paid.reduce((s, r) => s + r.income.total, 0);
   const saved = sum('saved');
   const rate = income > 0 ? saved / income : null;
-  const spec = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, h.start, [h.end, today].sort()[0])));
+  const spec = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, h.start, h.end)));
+  const overrun = livingOverrun(txs, budgets, h, today);
+  const eff = limit ? limit - overrun.over : null;
   return {
     half: h, rows, count: paid.length,
     estimated: paid.some(r => r.income.estimated),
     total: { income, living: sum('living'), special: sum('special'), spent: sum('spent'), saved, rate },
     goal: goal ?? null,
     gap: rate !== null && goal != null ? rate - goal : null,
-    overrun: livingOverrun(txs, budgets, h, today),
-    special: { spent: spec, limit: limit || null, left: limit ? limit - spec : null },
+    overrun,
+    special: { done: sum('special'), spent: spec, limit: limit || null, effLimit: eff, left: eff !== null ? eff - spec : null },
   };
 }
 /** 리포트에서 ◀ 를 어디까지 누를 수 있는지: 내역이 있는 가장 이른 반기 */
@@ -1697,12 +1740,14 @@ function dbSaveEvent(ev, changed, removeId) {
     t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
-/** 예산 짜기: 주기 생활비 예산 + 반기 특별지출 한도 + 주기 수입을 한 번에 (v4.0.0) */
-function dbSavePlan(budget, limit, income) {
+/** 예산 짜기: 주기 생활비 예산 + 반기 특별지출 한도 + 주기 수입을 한 번에 (v4.0.0)
+ *  frozen = 기본 급여를 바꿀 때 옛 금액으로 고정하는 지난 주기 수입 (v6.0.0). 추가만 하고 지우지 않는다 */
+function dbSavePlan(budget, limit, income, frozen = []) {
   return new Promise((res, rej) => {
     const t = db.transaction(['cycleBudgets', 'halfLimits', 'cycleIncomes'], 'readwrite');
     if (budget) t.objectStore('cycleBudgets').put(budget);
     if (limit) t.objectStore('halfLimits').put(limit);
+    frozen.forEach(r => t.objectStore('cycleIncomes').put(r));
     if (income) t.objectStore('cycleIncomes').put(income);
     t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
@@ -1729,7 +1774,7 @@ const state = {
   cycleFilter: 'all', selMode: false, sel: [], importEvery: 7,
   // v4.0.0
   events: [], halfLimits: {}, incomes: {},
-  baseSalary: 0, savingsGoal: 0.4, halfRef: null, halfCat: null, livingPlan: null,
+  baseSalary: 0, savingsGoal: 0.4, halfRef: null, livingPlan: null,
   // v5.0.0
   budgetRef: null,
 };
@@ -1793,11 +1838,6 @@ const incomeOf = cycleId => cycleIncome(state.incomes, cycleId, state.baseSalary
 const eventById = id => state.events.find(e => e.id === id) || null;
 /** 새로 만드는·가져오는 내역에 이벤트 태그를 붙인다 */
 const withEvent = t => ({ ...t, eventId: eventIdFor(t, state.events), eventSource: t.eventSource || 'auto' });
-async function saveHalfLimit(halfId, amount) {
-  const rec = { halfId, amount, confirmedAt: Date.now() };
-  await dbPut('halfLimits', rec);
-  state.halfLimits[halfId] = rec;
-}
 async function saveIncome(cycleId, salary, extras) {
   const rec = { cycleId, salary, extras: extras || [], editedAt: Date.now() };
   await dbPut('cycleIncomes', rec);
@@ -1851,7 +1891,7 @@ function donutSVG(rows, selId) {
   const center = pick
     ? `<text x="90" y="80" text-anchor="middle" class="donut-center-k">${esc(pick.cat.emoji)} ${esc(pick.cat.name)}</text>
        <text x="90" y="102" text-anchor="middle" class="donut-center-v num">${Math.round(pick.share * 100)}%</text>
-       <text x="90" y="120" text-anchor="middle" class="donut-center-k num">${formatMan(pick.spent)}${pick.spent >= 10000 ? '' : ''}</text>`
+       <text x="90" y="120" text-anchor="middle" class="donut-center-k num">${formatMan(pick.spent)}</text>`
     : `<text x="90" y="95" text-anchor="middle" class="donut-center-k">아직 생활비 지출이 없어요</text>`;
   return `<svg width="180" height="180" viewBox="0 0 180 180" role="img" aria-label="생활비 카테고리별 비중">${segs}${center}</svg>`;
 }
@@ -1879,7 +1919,7 @@ function catSectionHTML(s) {
     </div>`).join('');
   return `
     <div class="donut-wrap ${sel ? 'picked' : ''}">${donutSVG(s.catRows, sel)}</div>
-    ${s.catRows.length > 1 ? '<div class="cat-hint">도넛이나 항목을 누르면 그 카테고리만 볼 수 있어요</div>' : ''}
+    ${s.catRows.length ? '<div class="cat-hint">항목을 누르면 그 카테고리 내역을 볼 수 있어요</div>' : ''}
     ${rows || '<div class="empty">+ 버튼을 눌러 첫 지출을 기록해 보세요</div>'}
     ${negRows}`;
 }
@@ -1893,27 +1933,28 @@ function bindCatSection(s) {
     bindCatSection(s);
   };
   box.querySelectorAll('[data-seg]').forEach(el => el.onclick = () => pick(el.dataset.seg));
-  box.querySelectorAll('[data-catrow]').forEach(el => el.onclick = () => pick(el.dataset.catrow));
+  // 행을 누르면 그 주기·카테고리로 내역을 연다 (v6.0.0)
+  box.querySelectorAll('[data-catrow]').forEach(el => el.onclick = () => goList({ cycleId: s.cycle.id, catId: el.dataset.catrow }));
 }
 
 function budgetCardHTML(b) {
   if (b.amount === null) {
     return `<div class="budget-card">
       <div class="t">이번 주기 생활비 예산을 정해 주세요</div>
-      <div class="why">주기 기록이 한 번 끝까지 쌓이면 다음 주기부터 자동으로 제안해 드려요 (최대 최근 3개 주기 기준)</div>
-      <div class="btns"><button class="btn-ghost" data-budget-plan>예산 짜기</button><button class="btn-fill" data-budget-input>예산 입력</button></div></div>`;
+      <div class="why">한 주기가 끝나면 자동으로 제안해요</div>
+      <div class="btns"><button class="btn-ghost" data-budget-input>직접 입력</button><button class="btn-fill" data-budget-plan>예산 짜기</button></div></div>`;
   }
   if (!b.provisional) return '';
   const s = b.suggestion;
+  // v6.0.0: −5% 버튼을 뺐다. v5에서 −5%로 줄여 둔 값이 남아 있을 수 있어 '바꿈' 표시는 남긴다
   const why = b.plan
-    ? `예산 짜기에서 정한 금액이에요 · ${halfOf(b.cycle.start).label}${b.amount !== b.plan ? ` · ${formatMan(b.plan)}원에서 줄임` : ''}`
-    : `최근 ${s.count}개 주기 생활비 중앙값 ${formatMan(s.median)}원 기준${b.amount !== s.amount ? ` · 제안값 ${formatMan(s.amount)}원에서 줄임` : ''}`;
+    ? `예산 짜기에서 정한 금액이에요 · ${halfOf(b.cycle.start).label}${b.amount !== b.plan ? ` · ${formatMan(b.plan)}에서 바꿈` : ''}`
+    : `최근 ${s.count}개 주기 생활비 중앙값 ${formatMan(s.median)} 기준${b.amount !== s.amount ? ` · ${formatMan(s.amount)}에서 바꿈` : ''}`;
   return `<div class="budget-card">
-    <div class="t">${b.plan ? '이번 주기 생활비 예산 · 계획대로' : '이번 주기 생활비 예산 제안'}</div>
+    <div class="t">${b.plan ? '이번 주기 생활비 예산 · 계획' : '이번 주기 생활비 예산 제안'}</div>
     <div class="amt num">${formatWon(b.amount)}원</div>
     <div class="why">${why}</div>
-    <div class="btns"><button class="btn-ghost num" data-budget-minus>−5%</button><button class="btn-fill" data-budget-confirm>확정</button></div>
-    <div class="btns" style="margin-top:8px"><button class="btn-ghost" data-budget-plan>급여·저축률로 예산 짜기</button></div></div>`;
+    <div class="btns"><button class="btn-ghost" data-budget-plan>예산 짜기</button><button class="btn-fill" data-budget-confirm>확정</button></div></div>`;
 }
 
 /* ---- 누적 지출 선 그래프 ---- */
@@ -1928,7 +1969,6 @@ function pcScale(series, budget, total) {
 /** 누적 지출 선 그래프. budget이 없으면 점선(예산 페이스)을 빼고 그린다.
  *  isCurrent=false면 끝점 라벨이 '오늘'이 아니라 주기 마지막 날이다 (v3.1.0) */
 function paceChartSVG(series, budget, total, c, isCurrent) {
-  const p = { total };
   const { x, y } = pcScale(series, budget, total);
   const pts = [[0, y(0)], ...series.map((v, i) => [x(i + 1), y(v)])];
   const line = pts.map((q, i) => `${i ? 'L' : 'M'}${q[0].toFixed(1)},${q[1].toFixed(1)}`).join('');
@@ -1956,11 +1996,12 @@ function bindPaceChart(series, budget, total, c, isCurrent) {
   if (!svg) return;
   const p = { total };
   const { x, y } = pcScale(series, budget, total);
-  const show = i => {
+  // 평소에는 문구를 비워 둔다. 끝점 금액은 바로 위 큰 숫자와 같다 (v6.0.0). 누르고 있을 때만 그날 값을 보여준다
+  const show = (i, scrubbing) => {
     const v = series[i];
     const isToday = i === series.length - 1;
     const day = isToday && isCurrent ? '오늘' : shortDate(addDays(c.start, i));
-    out.innerHTML = budget
+    out.innerHTML = !scrubbing ? '' : budget
       ? `${day} · 누적 <b>${formatWon(v)}원</b> · 적정 ${formatWon(roundTo(budget * (i + 1) / total, 1000))}원`
       : `${day} · 누적 <b>${formatWon(v)}원</b>`;
     dot.setAttribute('cx', x(i + 1)); dot.setAttribute('cy', y(v));
@@ -1970,18 +2011,12 @@ function bindPaceChart(series, budget, total, c, isCurrent) {
   const at = e => {
     const r = svg.getBoundingClientRect();
     const day = Math.round((e.clientX - r.left) / r.width * p.total);
-    show(Math.max(0, Math.min(series.length - 1, day - 1)));
+    show(Math.max(0, Math.min(series.length - 1, day - 1)), true);
   };
   hit.addEventListener('pointerdown', at);
   hit.addEventListener('pointermove', e => { if (e.pressure > 0 || e.pointerType === 'mouse') at(e); });
   ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => hit.addEventListener(ev, () => show(series.length - 1)));
   show(series.length - 1);
-}
-function gapText(gap) {
-  if (Math.abs(gap) < 1000) return '적정 금액만큼 썼어요';
-  const g = Math.abs(gap);
-  const amt = g >= 100000 ? `${formatWon(Math.round(g / 10000))}만원` : g >= 10000 ? `${formatMan(g)}원` : `${formatWon(g)}원`;
-  return gap > 0 ? `적정보다 ${amt} 더 썼어요` : `적정보다 ${amt} 덜 썼어요`;
 }
 
 function cycleNavHTML(c, canPrev, canNext) {
@@ -1992,6 +2027,19 @@ function cycleNavHTML(c, canPrev, canNext) {
   </span>`;
 }
 
+/** 내역 탭으로 필터를 걸고 이동 (v6.0.0) */
+function goList({ cycleId = 'all', catId = 'all', special = false } = {}) {
+  state.cycleFilter = cycleId; state.filterCat = catId; state.filterSpecial = special; state.query = '';
+  state.selMode = false; state.sel = [];
+  switchTab('list');
+}
+/** 특별지출 탭으로 이동. ref가 속한 반기를 연다 (v6.0.0) */
+function goSpecial(ref) {
+  const today = todayYMD();
+  state.halfRef = !ref || halfOf(ref).id === halfOf(today).id ? null : halfOf(ref).end;
+  switchTab('goal');
+}
+
 function renderHome() {
   const today = todayYMD();
   const ref = state.homeRef || today;          // 지난 주기를 볼 때는 그 주기의 마지막 날
@@ -1999,54 +2047,70 @@ function renderHome() {
   const c = cycleOf(ref);
   const bNow = budgetState(today);
   const budget = isCurrent ? bNow.amount : budgetOfCycle(c.id);
-  const s = homeStats(state.txs, state.cats, ref, budget, today);
+  // 페이스는 내역이 들어온 날까지로 센다 (v6.0.0). 파일을 7일마다 가져와도 상태가 튀지 않는다
+  const asOf = isCurrent ? dataAsOf(state.batches, state.txs, today) : null;
+  const s = homeStats(state.txs, state.cats, ref, budget, today, asOf);
   const p = s.pace;
+  const lagging = isCurrent && !s.noData && s.asOf < today;
   const up = isCurrent ? upcomingFixed(state.fixeds, today) : [];
   const pend = pendingRows().length;
   const due = isCurrent ? importDue(state.batches, today, state.importEvery) : null;
   const first = earliestCycle(state.txs, today);
   const canPrev = c.start > first.start;
   const canNext = !isCurrent;
+  // 특별지출 칸: 특별지출 탭과 같은 계산 (생활비 초과 반영 · 예정 포함) (v6.0.0)
   const hl0 = halfLimitOf(s.half.id);
-  // 특별지출 탭과 같은 기준: 끝난 주기 생활비 초과분을 뺀 '실제로 쓸 수 있는 돈' (v4.0.2)
   const hlOver = hl0 ? livingOverrun(state.txs, state.budgets, s.half, today).over : 0;
-  const hl = hl0 ? hl0 - hlOver : null;
+  const hs = halfStats(state.txs, state.events, state.cats, ref, hl0, hlOver);
 
   let delta = '지난 주기 기록이 없어요';
   if (s.change !== null) {
     const diff = s.living - s.prevSame;
-    delta = s.change === 0 ? '지난 주기 같은 기간과 같아요'
-      : `지난 주기 ${isCurrent ? '같은 기간' : '전체'}보다 ${diff > 0 ? '▲' : '▼'}${Math.abs(s.change)}% <span class="num">(${diff > 0 ? '+' : '−'}${formatWon(Math.abs(diff))}원)</span>`;
+    const base = `지난 주기 ${isCurrent ? '같은 기간' : '전체'}보다`;
+    delta = Math.abs(diff) < 1000 ? `${base} 비슷하게 썼어요`
+      : `${base} <span class="num">${formatMan(Math.abs(diff))}</span> ${diff > 0 ? '더' : '덜'} 썼어요`;
   }
 
   // 오른쪽 위: 이번 주기는 예산, 지난 주기는 기간 일수
   const headRight = isCurrent
-    ? (bNow.provisional ? '<span class="tag">제안값 적용 중</span>' : budget ? `<span class="num">예산 ${formatMan(budget)}${budget >= 10000 ? '원' : ''}</span>` : '')
+    ? (bNow.provisional ? `<span class="tag">${bNow.plan ? '계획' : '제안'}</span>` : budget ? `<span class="num">예산 ${formatMan(budget)}</span>` : '')
     : `<span class="num">${s.elapsed}일</span>`;
 
-  // 아래 문구: 이번 주기는 페이스, 지난 주기는 결과
-  const bottom = isCurrent && p
-    ? `<div class="pace"><b>${p.status}</b> · ${gapText(p.gap)}<br><span class="sub">남은 ${p.daysLeft}일 · 하루 <span class="num">${formatWon(p.daily)}원</span></span></div>`
-    : isCurrent
-      ? `<div class="pace"><span class="sub">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</span></div>`
-      : budget
-        ? `<div class="pace"><b>예산의 ${s.budgetPct}%</b>를 썼어요<br><span class="sub">하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span> · 예산 ${formatMan(budget)}원</span></div>`
-        : `<div class="pace"><b>하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span></b><br><span class="sub">예산을 정하지 않은 주기예요 · <button class="link-btn" id="set-past-budget" style="display:inline;padding:0;font-size:inherit">예산 넣기</button></span></div>`;
+  // 아래 문구: 이번 주기는 페이스 한 줄, 지난 주기는 결과
+  let bottom;
+  if (isCurrent && s.noData) {
+    bottom = '<div class="pace"><span class="sub">이번 주기 내역이 아직 없어요 · 파일을 가져오면 페이스를 보여드려요</span></div>';
+  } else if (isCurrent && p) {
+    bottom = p.level === 'over'
+      ? `<div class="pace"><b>초과</b> · 예산보다 <span class="num">${formatWon(s.living - budget)}원</span> 더 썼어요</div>`
+      : `<div class="pace"><b>${p.status}</b> · 남은 ${p.daysLeft}일 하루 <span class="num">${formatWon(p.daily)}원</span></div>`;
+  } else if (isCurrent) {
+    bottom = `<div class="pace"><span class="sub">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</span></div>`;
+  } else if (budget) {
+    bottom = `<div class="pace"><b>예산의 ${s.budgetPct}%</b>를 썼어요<br><span class="sub">하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span> · 예산 ${formatMan(budget)}</span></div>`;
+  } else {
+    bottom = `<div class="pace"><b>하루 평균 <span class="num">${formatWon(s.avgDaily)}원</span></b><br><span class="sub">예산을 정하지 않은 주기예요 · <button class="link-btn" id="set-past-budget" style="display:inline;padding:0;font-size:inherit">예산 넣기</button></span></div>`;
+  }
 
   const level = isCurrent && p ? p.level : (budget && s.budgetPct >= 100 ? 'over' : 'calm');
   const gauge = `
     <section class="section st-${level}">
       <div class="gauge-head">${cycleNavHTML(c, canPrev, canNext)}${headRight}</div>
-      <div class="gauge-amt num">${formatWon(s.living)}<small>원</small></div>
-      <div class="gauge-of num">${isCurrent && bNow.provisional ? `예산 ${formatWon(budget)}원 · ` : ''}${shortDate(c.start)} – ${shortDate(c.end)}</div>
+      <button class="gauge-amt gauge-link num" data-go-list aria-label="${c.name} 주기 내역 보기">${formatWon(s.living)}<small>원</small>${ICON.chev}</button>
+      <div class="gauge-of num">${shortDate(c.start)} – ${shortDate(c.end)}${lagging ? ` · ${shortDate(s.asOf)}까지 반영` : ''}</div>
       <div class="pace-chart" id="pace-chart">
         <div class="readout num" id="pc-readout"></div>
-        ${paceChartSVG(s.series, budget, cycleDays(c), c, isCurrent)}
+        ${paceChartSVG(s.series, budget, cycleDays(c), c, isCurrent && !lagging)}
         <div class="legend"><span><i></i>누적 지출</span>${budget ? '<span><i class="dash"></i>예산 페이스</span>' : ''}</div>
       </div>
       ${bottom}
       <div class="delta-line">${delta}</div>
     </section>`;
+
+  const spCls = hs.limit ? (hs.level === 'over' ? 'neg' : hs.level === 'warn' ? 'warn' : '') : '';
+  const spSub = hs.limit
+    ? `${hlOver ? '줄어든 한도' : '한도'} ${formatMan(Math.max(0, hs.effLimit))} · ${hs.pct}%${hs.planned.total ? ` · 예정 포함 ${hs.projectedPct}%` : ''}`
+    : `${shortDate(s.half.start)} – ${shortDate(s.half.end)} · 한도 없음`;
 
   $('#view').innerHTML = `
     <div class="topbar"><h1>홈</h1><button class="icon-btn" id="open-settings" aria-label="설정">${ICON.gear}</button></div>
@@ -2061,13 +2125,10 @@ function renderHome() {
       ${ICON.chev}</div>` : ''}
     ${isCurrent ? budgetCardHTML(bNow) : ''}
     ${gauge}
-    <div class="stats two">
-      <div class="stat"><div class="k">특별지출 · ${s.half.label}</div>
-        <div class="v num ${hl0 && s.special >= hl && (s.special > 0 || hl <= 0) ? 'neg' : ''}">${formatWon(s.special)}원</div>
-        <div class="k2 num">${hl0 ? `${hlOver ? '쓸 수 있는' : '한도'} ${formatMan(Math.max(0, hl))} · ${hl > 0 ? Math.round(s.special / hl * 100) : 100}%` : `${shortDate(s.half.start)} – ${shortDate(s.half.end)}`}</div></div>
-      ${isCurrent
-        ? `<div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div><div class="k2">생활비 + 특별지출</div></div>`
-        : `<div class="stat"><div class="k">하루 평균</div><div class="v num">${formatWon(s.avgDaily)}원</div><div class="k2">생활비 ${s.elapsed}일 기준</div></div>`}
+    <div class="stats one">
+      <button class="stat stat-link" id="go-special"><div class="k">특별지출 · ${s.half.label}</div>
+        <div class="v num ${spCls}">${formatWon(hs.spent)}원</div>
+        <div class="k2 num">${spSub}</div>${ICON.chev}</button>
     </div>
     <section class="section">
       <h2 class="section-title">생활비 카테고리</h2>
@@ -2086,6 +2147,8 @@ function renderHome() {
   if (gp) gp.onclick = () => openPending();
   const gi = $('#go-import');
   if (gi) gi.onclick = () => openImport();
+  $('#go-special').onclick = () => goSpecial(ref);
+  $('#view').querySelector('[data-go-list]').onclick = () => goList({ cycleId: c.id });
   $('#view').querySelectorAll('[data-cyc]').forEach(b2 => b2.onclick = () => {
     if (b2.disabled) return;
     state.homeRef = shiftCycleRef(ref, Number(b2.dataset.cyc), today);
@@ -2098,25 +2161,28 @@ function renderHome() {
     title: `${c.name} 생활비 예산`,
     initial: 0,
     hint: '지난 주기에도 예산을 넣어 두면 얼마나 썼는지 비교할 수 있어요',
-    onSave: async n => { await saveBudget(c.id, n, true, null); renderHome(); toast('예산을 저장했어요'); },
+    onSave: async n => {
+      // 지난 주기 예산은 생활비 초과로 특별지출 한도를 줄일 수 있다. 얼마나 줄었는지 알려준다 (v6.0.0)
+      const h = halfOf(c.start);
+      const overOf = () => (halfLimitOf(h.id) ? livingOverrun(state.txs, state.budgets, h, today).over : 0);
+      const before = overOf();
+      await saveBudget(c.id, n, true, null);
+      const after = overOf();
+      renderHome();
+      toast(after > before ? `예산을 저장했어요 · 특별지출 한도에서 ${formatMan(after - before)} 빠졌어요` : '예산을 저장했어요');
+    },
   });
   $('#view').querySelectorAll('[data-fixed]').forEach(r => r.onclick = () => openFixedEditor(state.fixeds.find(f => f.id === r.dataset.fixed)));
   bindCatSection(s);
-  bindPaceChart(s.series, budget, cycleDays(c), c, isCurrent);
+  bindPaceChart(s.series, budget, cycleDays(c), c, isCurrent && !lagging);
   const v = $('#view');
   const inputBtn = v.querySelector('[data-budget-input]');
   if (inputBtn) inputBtn.onclick = () => openBudgetInput(bNow);
-  const planBtn = v.querySelector('[data-budget-plan]');
-  if (planBtn) planBtn.onclick = () => openBudgetPlanner();
-  const minus = v.querySelector('[data-budget-minus]');
-  if (minus) minus.onclick = async () => {
-    await saveBudget(bNow.cycle.id, minus5(bNow.amount), false, suggestedOf(bNow));
-    renderHome();
-  };
+  v.querySelectorAll('[data-budget-plan]').forEach(b2 => b2.onclick = () => openBudgetPlanner());
   const ok = v.querySelector('[data-budget-confirm]');
   if (ok) ok.onclick = async () => {
     await saveBudget(bNow.cycle.id, bNow.amount, true, suggestedOf(bNow));
-    renderHome(); toast(`생활비 예산 ${formatMan(bNow.amount)}원으로 확정했어요`);
+    renderHome(); toast(`생활비 예산 ${formatMan(bNow.amount)}으로 확정했어요`);
   };
 }
 
@@ -2124,7 +2190,7 @@ function openBudgetInput(b) {
   openAmountSheet({
     title: `${b.cycle.name} 생활비 예산`,
     initial: b.amount || 0,
-    hint: b.suggestion ? `최근 ${b.suggestion.count}개 주기 중앙값 ${formatMan(b.suggestion.median)}원` : '이번 주기에 생활비로 쓸 금액',
+    hint: b.suggestion ? `최근 ${b.suggestion.count}개 주기 중앙값 ${formatMan(b.suggestion.median)}` : '이번 주기에 생활비로 쓸 금액',
     onSave: async n => {
       await saveBudget(b.cycle.id, n, true, b.suggestion ? b.suggestion.amount : null);
       render(); toast('생활비 예산을 저장했어요');
@@ -2140,15 +2206,16 @@ function kindLabels(t) {
   if (t.kind === 'special') s += '<span class="label special">특별</span>';
   return s;
 }
-const txSource = t => (t.method === 'fixed-auto' ? '자동 기록' : t.method === 'import' ? '가져옴' : null);
+/** 내역 줄 부가 정보. 대부분 파일에서 가져오므로 '가져옴' 대신 직접 입력한 건에만 '직접'을 붙인다 (v6.0.0) */
+const txSourceHTML = t => (t.method === 'fixed-auto' ? '자동 기록'
+  : `<span class="num">${t.time}</span>${t.method === 'manual' ? ' · 직접' : ''}`);
 function txRowHTML(t, selecting, selected) {
   const c = catById(t.categoryId);
-  const src = txSource(t);
   return `<div class="tx ${t.status === 'canceled' ? 'canceled' : ''}" data-tx="${t.id}">
       ${selecting ? `<span class="ck ${selected ? 'on' : ''}">${ICON.check}</span>` : ''}
       <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
       <div class="tx-main"><div class="tx-title">${esc(t.merchant || c.name)}${kindLabels(t)}</div>
-        <div class="tx-sub">${src ? esc(src) : `<span class="num">${t.time}</span>`} · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
+        <div class="tx-sub">${txSourceHTML(t)} · ${esc(c.name)}${t.status === 'canceled' ? ' · 취소됨' : ''}</div></div>
       <div class="tx-amt num ${t.amount < 0 ? 'refund' : ''}">${formatWon(t.amount)}원</div>
     </div>`;
 }
@@ -2184,18 +2251,24 @@ function renderList() {
   }).join('');
 
   const cycles = cyclesInData(state.txs, todayYMD());
-  const cycleChips = [{ id: 'all', name: '전체' }, ...cycles.map(c => ({ id: c.id, name: c.name }))]
+  // 12개 안에 같은 달 이름이 두 번 나오면(빈 달이 있을 때) 앞에 해를 붙인다 (v6.0.0)
+  const nameCount = {};
+  cycles.forEach(c => { nameCount[c.name] = (nameCount[c.name] || 0) + 1; });
+  const chipName = c => (nameCount[c.name] > 1 ? `${c.end.slice(2, 4)}년 ${c.name}` : c.name);
+  const cycleChips = [{ id: 'all', name: '전체' }, ...cycles.map(c => ({ id: c.id, name: chipName(c) }))]
     .map(c => `<button class="chip ${state.cycleFilter === c.id ? 'on' : ''}" data-cycle="${c.id}">${esc(c.name)}</button>`).join('');
   // ✦ 특별지출 칩은 카테고리와 따로 켜고 끈다 (특별지출 + 쇼핑처럼 같이 걸 수 있다) (v4.0.2)
   const chips = `<button class="chip chip-sp ${state.filterSpecial ? 'on' : ''}" id="f-special" aria-pressed="${state.filterSpecial}">✦ 특별지출</button>`
     + [{ id: 'all', name: '전체', emoji: '' }, ...state.cats]
       .map(c => `<button class="chip ${state.filterCat === c.id ? 'on' : ''}" data-filter="${c.id}">${c.emoji ? esc(c.emoji) + ' ' : ''}${esc(c.name)}</button>`).join('');
-  // 목록 위 한 줄: 주기를 고르면 그 기간, 특별지출을 켜면 건수와 합계
-  const selCycle = state.cycleFilter !== 'all' ? cycles.find(c => c.id === state.cycleFilter) : null;
+  // 목록 위 한 줄: 주기를 고르면 그 기간, 조건이 하나라도 걸리면 건수와 합계 (v6.0.0 — 홈 카테고리 금액과 맞춰 볼 수 있게)
+  const selCycle = state.cycleFilter !== 'all'
+    ? (cycles.find(c => c.id === state.cycleFilter) || cycleOf(`${state.cycleFilter}-${pad(PAYDAY)}`)) : null;
   const sm = listSummary(list);
+  const filtered = state.cycleFilter !== 'all' || state.filterCat !== 'all' || state.filterSpecial || state.query;
   const sumParts = [
     selCycle ? `${shortDate(selCycle.start)} – ${shortDate(selCycle.end)}` : '',
-    state.filterSpecial ? `특별지출 ${sm.count}건 · ${formatWon(sm.total)}원` : '',
+    filtered ? `${state.filterSpecial ? '특별지출 ' : ''}${sm.count}건 · ${formatWon(sm.total)}원` : '',
   ].filter(Boolean);
   const sumLine = sumParts.length ? `<div class="list-sum num">${sumParts.join(' · ')}</div>` : '';
 
@@ -2329,13 +2402,14 @@ async function bulkDelete() {
 const mdLabel = ymd => { const d = parseYMD(ymd); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${WEEK[d.getDay()]})`; };
 const ddayText = n => (n === 0 ? '오늘' : `D-${n}`);
 const calAmt = n => (n >= 10000 ? formatMan(n) : formatWon(n));
-const fixedSub = f => `매월 ${payDayLabel(f.payDay)} · ${f.method === 'card' ? '카드' : '계좌'}`;
+const fixedSub = f => `매월 ${payDayLabel(f.payDay)}`;
 
 /** mode: 'list'(완료 여부 표시) / 'home'(날짜와 D-day) */
 function fixedRowHTML(x, mode) {
   const f = x.f, c = catById(f.categoryId);
-  const sub = mode === 'home' ? `${mdLabel(x.date)} · ${ddayText(x.dday)}${f.method === 'card' ? ' · 카드' : ''}` : fixedSub(f);
-  const st = mode === 'home' ? '' : x.done ? '<div class="fx-st done">✓ 출금됨</div>' : `<div class="fx-st num">${ddayText(x.dday)}</div>`;
+  const sub = mode === 'home' ? `${mdLabel(x.date)} · ${ddayText(x.dday)}` : fixedSub(f);
+  // 실제 출금을 확인한 게 아니라 출금일이 지났다는 뜻이라 '지남'으로 적는다 (v6.0.0)
+  const st = mode === 'home' ? '' : x.done ? '<div class="fx-st done">지남</div>' : `<div class="fx-st num">${ddayText(x.dday)}</div>`;
   return `<div class="tx fx-row ${x.done ? 'done' : ''}" data-fixed="${f.id}">
     <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
     <div class="tx-main"><div class="tx-title">${esc(f.name)}</div><div class="tx-sub">${sub}</div></div>
@@ -2354,7 +2428,7 @@ function fixedCalendarHTML(v, today) {
     const xs = byDate[d] || [], done = d <= today;
     const cls = ['cal-d', d === today && 'today', xs.length && 'has', done && 'done', state.fixedSel === d && 'sel'].filter(Boolean).join(' ');
     const mark = xs.length
-      ? `<span class="cal-dots">${xs.slice(0, 3).map(() => '<i></i>').join('')}</span><span class="cal-m num">${done ? '✓' : ''}${calAmt(sumAmount(xs.map(x => x.f)))}</span>`
+      ? `<span class="cal-dots">${xs.slice(0, 3).map(() => '<i></i>').join('')}</span><span class="cal-m num">${calAmt(sumAmount(xs.map(x => x.f)))}</span>`
       : '';
     cells += `<button class="${cls}" ${xs.length ? `data-day="${d}"` : 'disabled'} aria-label="${mdLabel(d)}${xs.length ? ` 출금 ${xs.length}건` : ''}"><span class="cal-n num">${i === 0 || dd === 1 ? `${m}.${dd}` : dd}</span>${mark}</button>`;
   }
@@ -2409,6 +2483,7 @@ function openFixedEditor(fx) {
     amount: editing ? String(fx.amount) : '',
     name: editing ? fx.name : '',
     payDay: editing ? fx.payDay : Number(today.slice(8)),
+    // v6.0.0: 계좌/카드 구분을 화면에서 뺐다 (v3.0.0부터 자동 기록이 없어 표시 글자만 달랐다). 기존 값은 그대로 둔다
     method: editing ? fx.method : 'account',
     cat: editing ? fx.categoryId : null,
   };
@@ -2425,8 +2500,6 @@ function openFixedEditor(fx) {
         <select id="x-day" aria-label="출금일">${days.map(d => `<option value="${d}" ${d === f.payDay ? 'selected' : ''}>매월 ${payDayLabel(d)}</option>`).join('')}</select></label>
       <div class="amount-display num" id="x-amt"></div>
       <input id="x-name" class="memo" placeholder="이름 (예: 통신비)" maxlength="20" value="${esc(f.name)}" autocomplete="off">
-      <div class="seg"><button data-method="account">계좌 자동이체</button><button data-method="card">카드 결제</button></div>
-      <div class="method-hint" id="x-mhint"></div>
       <div class="cat-grid" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
         ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
       </div>
@@ -2442,8 +2515,6 @@ function openFixedEditor(fx) {
     amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
     amtEl.classList.toggle('zero', !n);
     $('#x-day-label', el).textContent = `매월 ${payDayLabel(f.payDay)}`;
-    el.querySelectorAll('[data-method]').forEach(b => b.classList.toggle('on', b.dataset.method === f.method));
-    $('#x-mhint', el).textContent = f.method === 'account' ? '계좌에서 빠져나가요 · 캘린더에 표시돼요' : '카드로 결제돼요 · 캘린더에 표시돼요';
     el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === f.cat));
     const ok = n > 0 && f.name.trim() && f.cat;
     saveBtn.disabled = !ok;
@@ -2458,7 +2529,6 @@ function openFixedEditor(fx) {
   });
   $('#x-day', el).onchange = e => { f.payDay = Number(e.target.value); paint(); };
   $('#x-name', el).oninput = e => { f.name = e.target.value; paint(); };
-  el.querySelectorAll('[data-method]').forEach(b => b.onclick = () => { f.method = b.dataset.method; paint(); });
   el.querySelectorAll('[data-cat]').forEach(b => b.onclick = () => { f.cat = b.dataset.cat; paint(); });
   if (f.cat) requestAnimationFrame(() => { const on = el.querySelector(`[data-cat="${f.cat}"]`); on && on.scrollIntoView({ inline: 'center', block: 'nearest' }); });
 
@@ -2503,24 +2573,25 @@ function renderBudget() {
   const isCurrent = !state.budgetRef;
   const h = halfOf(ref), hNow = halfOf(today), cNow = cycleOf(today);
   const first = earliestAnyHalf(state.txs, today);
-  const goal = state.savingsGoal;
+  // 목표는 반기마다 저장된 값으로 본다. 목표를 바꿔도 지난 반기가 다시 채점되지 않는다 (v6.0.0)
+  const goal = goalOfHalf(state.halfLimits, h.id, state.savingsGoal);
+  const goalNow = goalOfHalf(state.halfLimits, hNow.id, state.savingsGoal);
   const rp = halfReport(state.txs, state.incomes, state.budgets, h, today, state.baseSalary, state.installYMD, halfLimitOf(h.id), goal);
 
-  // ---- 이번 반기 계획
+  // ---- 이번 반기 계획: 홈과 같은 생활비 예산을 쓴다 (확정 > 계획 > 실적 제안) (v6.0.0)
+  const bs = budgetState(today);
   const inc = incomeOf(cNow.id);
-  const living = budgetOfCycle(cNow.id) ?? planLivingFor(state.livingPlan, today);
   const limitNow = halfLimitOf(hNow.id);
-  const plan = inc.total && living !== null ? budgetPlan(inc.total, goal, living, limitNow || 0) : null;
+  const plan = inc.total && bs.amount !== null ? budgetPlan(inc.total, goalNow, bs.amount, limitNow || 0) : null;
+  const badge = bs.provisional ? `<span class="est neutral">${bs.plan ? '계획' : '제안'}</span>` : '';
   const planCard = `<section class="section">
-      <div class="gauge-head"><span class="cyc-name">${esc(hNow.label)} 계획</span><span class="num">목표 ${pctText(goal)}</span></div>
-      ${plan ? `<div class="plan" style="margin-top:8px">
-        <div class="plan-row"><span class="k">수입 · ${cNow.name} 주기${inc.estimated ? '<span class="est">추정</span>' : ''}</span><span class="v num">${formatWon(inc.total)}원</span></div>
-        <div class="plan-row sub"><span class="k">− 생활비 예산</span><span class="v num">${formatWon(plan.living)}원</span></div>
-        <div class="plan-row sub"><span class="k">− 특별지출 ${limitNow ? `${formatMan(limitNow)} ÷ 6` : '(한도 없음)'}</span><span class="v num">${formatWon(plan.specialMonthly)}원</span></div>
-        <div class="plan-div"></div>
-        <div class="plan-row head"><span class="k">매달 저축</span><span class="v num">${formatWon(plan.saved)}원</span></div>
-        <div class="plan-row ${plan.ok ? 'good' : 'bad'}"><span class="k">저축률</span><span class="v num">${pctText(plan.rate)}</span></div>
-      </div>` : `<div class="hint">${inc.total ? '생활비 예산을 정하면 계획 저축률을 계산해 드려요' : '급여를 넣으면 계획 저축률을 계산해 드려요'}</div>`}
+      <div class="gauge-head"><span class="cyc-name">${esc(hNow.label)} 계획</span><span class="num">목표 ${pctText(goalNow)}</span></div>
+      <div class="plan" style="margin-top:8px">
+        <div class="plan-row"><span class="k">급여 · ${cNow.name} 주기${inc.estimated && inc.total ? '<span class="est">추정</span>' : ''}</span><span class="v num">${inc.total ? `${formatWon(inc.total)}원` : '정하지 않았어요'}</span></div>
+        <div class="plan-row"><span class="k">생활비 예산 (월)${badge}</span><span class="v num">${bs.amount !== null ? `${formatWon(bs.amount)}원` : '정하지 않았어요'}</span></div>
+        <div class="plan-row"><span class="k">특별지출 한도 (반기)</span><span class="v num">${limitNow ? `${formatWon(limitNow)}원` : '정하지 않았어요'}</span></div>
+      </div>
+      ${plan && !plan.ok ? `<div class="hint" style="color:var(--danger)">이대로면 저축률 ${pctText(plan.rate)} · 목표보다 ${formatMan(-plan.rest)} 더 써요</div>` : ''}
       <button class="primary" data-open-plan style="margin-top:14px">예산 짜기</button>
     </section>`;
 
@@ -2541,6 +2612,10 @@ function renderBudget() {
     const ovLines = rp.overrun.items.filter(x => x.diff > 0);
     const hasBudget = rp.rows.some(r => r.budget !== null);
     const sp = rp.special;
+    // 저축률과 같은 기준(끝난 주기)으로 특별지출을 적고, 남은 한도는 특별지출 탭과 같은 값을 보여준다 (v6.0.0)
+    const leftRow = sp.limit
+      ? `<button class="plan-row plan-link" data-go-special><span class="k">남은 한도</span><span class="v num" style="${sp.left < 0 ? 'color:var(--danger)' : ''}">${sp.left >= 0 ? `${formatWon(sp.left)}원` : `${formatWon(-sp.left)}원 초과`}${ICON.chev}</span></button>`
+      : '<div class="plan-row sub"><span class="k">특별지출 한도</span><span class="v">정하지 않았어요</span></div>';
     body = `
       <div class="rp-k">저축률</div>
       <div class="gauge-amt num">${(Math.round(t.rate * 1000) / 10).toFixed(1)}<small>%</small></div>
@@ -2551,8 +2626,8 @@ function renderBudget() {
         ${ovLines.length ? ovLines.map(x => `<div class="plan-row"><span class="k">생활비 초과 · ${x.cycle.name} 주기</span><span class="v num" style="color:var(--danger)">−${formatWon(x.diff)}원</span></div>`).join('')
           : `<div class="plan-row sub ${hasBudget ? 'good' : ''}"><span class="k">생활비</span><span class="v">${hasBudget ? '예산 안에서 썼어요' : '예산을 정한 주기가 없어요'}</span></div>`}
         <div class="plan-div"></div>
-        <div class="plan-row"><span class="k">특별지출 · ${isCurrent ? '지금까지' : '반기 전체'}</span><span class="v num">${formatWon(sp.spent)}원</span></div>
-        <div class="plan-row sub ${sp.left !== null && sp.left < 0 ? 'bad' : ''}"><span class="k">${sp.limit ? `한도 ${formatWon(sp.limit)}원` : '한도'}</span><span class="v num">${sp.limit ? (sp.left >= 0 ? `남은 ${formatWon(sp.left)}원` : `${formatWon(-sp.left)}원 초과`) : '정하지 않았어요'}</span></div>
+        <div class="plan-row"><span class="k">특별지출 · 끝난 주기</span><span class="v num">${formatWon(sp.done)}원</span></div>
+        ${leftRow}
       </div>
       <div class="hint">저축은 계좌 잔고가 아니라 <b>수입에서 쓴 돈을 뺀 금액</b>이에요.${rp.estimated ? ' <span class="est">추정</span>은 급여를 넣지 않아 기본 급여로 채운 주기예요.' : ''}</div>`;
   }
@@ -2561,18 +2636,15 @@ function renderBudget() {
       ${body}
     </section>`;
 
-  // ---- 주기별
+  // ---- 주기별: 빨간색은 생활비 초과에만 쓴다. 특별지출은 주기별로 판단하지 않는다 (4-1, v6.0.0)
   const rows = rp.rows.length ? `<section class="section">
       <h2 class="section-title">주기별</h2>
-      ${rp.rows.map(r => {
-        const bad = r.rate !== null && r.rate < goal;
-        return `<button class="rp-row" data-inc="${r.cycle.id}">
-          <div class="rp-top"><span class="t">${r.cycle.name} 주기<small class="num">${shortDate(r.cycle.start)}–${shortDate(r.cycle.end)}</small></span>
-            <span class="a num ${bad || r.saved < 0 ? 'bad' : ''}">${formatMan(r.saved)} · ${pctText(r.rate)}</span></div>
-          <div class="rp-sub num">수입 ${formatMan(r.income.total)}${r.income.estimated ? '<span class="est">추정</span>' : ''} · 생활비 ${formatMan(r.living)}${r.diff !== null && r.diff > 0 ? ` <span class="over">(+${formatMan(r.diff)})</span>` : ''} · 특별 ${formatMan(r.special)}</div>
-        </button>`;
-      }).join('')}
-      <div class="hint">누르면 그 주기 급여와 추가 수입을 고칠 수 있어요.${isCurrent ? ` 이번 ${cNow.name} 주기는 ${shortDate(cNow.end)}에 끝나면 들어가요.` : ''}</div>
+      ${rp.rows.map(r => `<button class="rp-row" data-inc="${r.cycle.id}">
+          <div class="rp-top"><span class="t">${r.cycle.name} 주기<small class="num">${shortDate(r.cycle.start)}–${shortDate(r.cycle.end)}</small>${r.income.estimated ? '<span class="est">추정</span>' : ''}</span>
+            <span class="a num">${r.rate !== null ? `${formatMan(r.saved)} · ${pctText(r.rate)}` : '급여 없음'}</span></div>
+          ${r.diff !== null && r.diff > 0 ? `<div class="rp-sub num"><span class="over">생활비 +${formatMan(r.diff)} 초과</span></div>` : ''}
+        </button>`).join('')}
+      <div class="hint">오른쪽은 그 주기 저축과 저축률이에요. 누르면 급여와 추가 수입을 고칠 수 있어요.${isCurrent ? ` 이번 ${cNow.name} 주기는 ${shortDate(cNow.end)}에 끝나면 들어가요.` : ''}</div>
     </section>` : '';
 
   $('#view').innerHTML = `
@@ -2586,6 +2658,7 @@ function renderBudget() {
     state.budgetRef = shiftHalfRef(ref, Number(b.dataset.bhalf), today);
     renderBudget();
   });
+  el.querySelectorAll('[data-go-special]').forEach(b => b.onclick = () => goSpecial(isCurrent ? null : h.end));
   el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => openIncomeEditor(b.dataset.inc));
 }
 
@@ -2646,14 +2719,11 @@ function halfNavHTML(h, canPrev, canNext) {
   </span>`;
 }
 
-/** 주기별 막대 분포 */
-function monthBarsHTML(months, todayCycleId) {
-  const max = Math.max(1, ...months.map(m => m.amount));
-  return `<div class="mbars">${months.map(m => {
-    const h = Math.max(3, Math.round(m.amount / max * 64));
-    const cls = ['mb', m.amount <= 0 && 'zero', m.cycle.id === todayCycleId && 'now'].filter(Boolean).join(' ');
-    return `<div class="${cls}"><small class="num">${m.amount > 0 ? formatMan(m.amount) : ''}</small><i style="height:${h}px"></i><span class="num">${m.cycle.name}</span></div>`;
-  }).join('')}</div>`;
+/** 지난 반기 비교 한 줄. 금액만 적는다 (v6.0.0) */
+function prevLine(s, isCurrent) {
+  if (s.change === null) return '';
+  const d = s.spent - s.prevSame;
+  return `<div class="delta-line">지난 반기 ${isCurrent ? '같은 시점' : '전체'}보다 <span class="num">${formatMan(Math.abs(d))}</span> ${d > 0 ? '더' : '덜'} 썼어요</div>`;
 }
 
 function renderSpecial() {
@@ -2682,24 +2752,24 @@ function renderSpecial() {
           <div class="plan-row sub"><span class="k">정한 한도</span><span class="v num">${formatWon(limit)}원</span></div>
           ${overLines.map(x => `<div class="plan-row sub"><span class="k">생활비 초과 · ${x.cycle.name} 주기</span><span class="v num" style="color:var(--danger)">−${formatWon(x.diff)}원</span></div>`).join('')}
           <div class="plan-div"></div>
-          <div class="plan-row"><span class="k">실제로 쓸 수 있는 돈</span><span class="v num">${formatWon(eff)}원</span></div>
+          <div class="plan-row"><span class="k">줄어든 한도</span><span class="v num">${formatWon(eff)}원</span></div>
         </div>` : ''}
         <div class="hl-bar">${s.planned.total ? `<u style="left:${barPct}%;width:${Math.max(0, planPct - barPct)}%"></u>` : ''}<i style="width:${barPct}%"></i></div>
-        <div class="hl-left">남은 <b class="num">${formatWon(Math.max(0, s.left))}원</b>${s.left < 0 ? ` <span class="num" style="color:var(--danger)">(${formatWon(s.left)}원 초과)</span>` : ''}</div>
+        <div class="hl-left">남은 한도 <b class="num">${formatWon(Math.max(0, s.left))}원</b>${s.left < 0 ? ` <span class="num" style="color:var(--danger)">(${formatWon(s.left)}원 초과)</span>` : ''}</div>
         ${s.planned.total ? `<div class="plan">
           <div class="plan-row head"><span class="k">예정 포함</span><span class="v num">${formatWon(s.projected)}원</span></div>
-          <div class="plan-row"><span class="k">남는 돈</span><span class="v num" style="color:${s.projectedLeft < 0 ? 'var(--danger)' : 'var(--text)'}">${formatWon(s.projectedLeft)}원</span></div>
+          <div class="plan-row"><span class="k">예정까지 빼면</span><span class="v num" style="color:${s.projectedLeft < 0 ? 'var(--danger)' : 'var(--text)'}">${formatWon(s.projectedLeft)}원</span></div>
           <div class="plan-div"></div>
           ${s.planned.items.map(x => `<div class="plan-row sub"><span class="k">${esc(x.event.name)} ${shortDate(x.event.start)}–${shortDate(x.event.end)}</span><span class="v num">예상 ${formatWon(x.rest)}원</span></div>`).join('')}
         </div>` : ''}
-        <div class="delta-line">${s.count ? `${s.count}건 · 건당 평균 <span class="num">${formatWon(s.avgEach)}원</span>${s.leftCount !== null ? `<br>남은 돈으로 평균 규모 <b class="num">${s.leftCount}건</b> 정도` : ''}` : '이번 반기에 특별지출이 없어요'}</div>
-        ${s.change !== null ? `<div class="delta-line">지난 반기 ${isCurrent ? '같은 시점' : '전체'}보다 ${s.spent - s.prevSame > 0 ? '▲' : '▼'}${Math.abs(s.change)}% <span class="num">(${s.spent - s.prevSame > 0 ? '+' : '−'}${formatWon(Math.abs(s.spent - s.prevSame))}원)</span></div>` : ''}
+        ${prevLine(s, isCurrent)}
       </section>`
     : `<section class="section">
         <div class="gauge-head">${halfNavHTML(h, h.start > first.start, !isCurrent)}</div>
         <div class="gauge-amt num">${formatWon(s.spent)}<small>원</small></div>
-        <div class="gauge-of num">${s.count}건 · ${shortDate(h.start)} – ${shortDate(h.end)}</div>
-        <div class="delta-line">한도를 정하면 남은 금액과 예정까지 같이 보여드려요.
+        <div class="gauge-of num">${shortDate(h.start)} – ${shortDate(h.end)}</div>
+        ${prevLine(s, isCurrent)}
+        <div class="delta-line">한도를 정하면 남은 한도와 예정까지 같이 보여드려요.
           <br><button class="link-btn" data-go-budget>예산 탭에서 정하기</button></div>
       </section>`;
 
@@ -2709,19 +2779,13 @@ function renderSpecial() {
       ${s.top.map(t => {
         const c = catById(t.categoryId);
         const ev = t.eventId ? eventById(t.eventId) : null;
-        return `<div class="big-row">
+        return `<div class="big-row tx" data-tx="${t.id}">
           <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
           <div class="grow"><div class="t">${esc(t.merchant || c.name)}</div>
             <div class="s num">${shortDate(t.date)} · ${esc(ev ? ev.name : c.name)}</div></div>
           <div class="a num">${formatWon(t.amount)}원</div></div>`;
       }).join('')}
     </section>` : '';
-
-  // ---- 주기별 분포
-  const monthSec = `<section class="section">
-      <h2 class="section-title">주기별 분포</h2>
-      ${monthBarsHTML(s.months, cycleOf(today).id)}
-    </section>`;
 
   // ---- 이벤트
   const evSec = `<section class="section">
@@ -2742,7 +2806,7 @@ function renderSpecial() {
 
   $('#view').innerHTML = `
     <div class="topbar"><h1>특별지출</h1></div>
-    ${gauge}${bigSec}${monthSec}${evSec}
+    ${gauge}${bigSec}${evSec}
     ${isCurrent ? '' : '<div class="hint" style="text-align:center;margin:0 24px">지난 반기를 보고 있어요</div>'}`;
 
   const el = $('#view');
@@ -2754,6 +2818,7 @@ function renderSpecial() {
   el.querySelectorAll('[data-go-budget]').forEach(b => b.onclick = () => switchTab('budget'));
   el.querySelectorAll('[data-ev-add]').forEach(b => b.onclick = () => openEventEditor());
   el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => openEventDetail(eventById(b.dataset.ev)));
+  el.querySelectorAll('.big-row[data-tx]').forEach(r => r.onclick = () => openEntry(state.txs.find(t => t.id === r.dataset.tx)));
 }
 
 /* ---- 이벤트 상세 ---- */
@@ -2889,29 +2954,31 @@ function applyTxChanges(changed) {
    목표 저축률이 '쓸 수 있는 돈'을 정하고, 그 안에서 생활비와 특별지출을 나눈다.
    생활비를 조절하면 특별지출 반기 한도가 따라 움직인다.
    ===================================================================== */
-const LIVING_STEP = 50000;
+const LIVING_STEP = 50000; // 생활비 스테퍼 5만원 단위
 function openBudgetPlanner() {
   const today = todayYMD();
   const c = cycleOf(today), h = halfOf(today);
   const inc0 = incomeOf(c.id);
   const bs = budgetState(today);
+  // 고정지출은 가져온 내역으로 생활비에 이미 들어간다. 생활비 예산을 이보다 낮게 잡지 않도록 보여준다 (v6.0.0)
+  const fixedTotal = fixedCycleView(state.fixeds, today).total;
   const f = {
     salary: inc0.salary || 0,
     extras: (inc0.extras || []).map(x => ({ ...x })),
-    goal: state.savingsGoal,
+    goal: goalOfHalf(state.halfLimits, h.id, state.savingsGoal),
     living: bs.amount || 0,
     limit: halfLimitOf(h.id) || 0,
-    touchedLimit: false,
+    setBase: true,
   };
   const income = () => f.salary + f.extras.reduce((s, x) => s + (x.amount || 0), 0);
-  // 생활비가 정해져 있지 않으면 목표 역산으로 채운다
+  // 생활비가 정해져 있지 않으면 쓸 수 있는 돈의 85%로 채운다
   if (!f.living && income()) f.living = Math.max(0, roundTo(Math.round(income() * (1 - f.goal)) * 0.85, LIVING_STEP));
   if (!f.limit) f.limit = suggestHalfLimit(income(), f.goal, f.living);
+  const relimit = () => { f.limit = suggestHalfLimit(income(), f.goal, f.living); };
 
+  // 지난 반기 결과 (예산 탭 리포트와 같은 계산)
   const ph = halfOf(addDays(h.start, -1));
-  const prevHalfSpecial = sumAmount(state.txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, ph.end)));
-  // 지난 반기 결과를 예산 짜기에 보여준다 (v5.0.0). 예산 탭 리포트와 같은 계산이다
-  const prev = halfReport(state.txs, state.incomes, state.budgets, ph, today, state.baseSalary, state.installYMD, halfLimitOf(ph.id), state.savingsGoal);
+  const prev = halfReport(state.txs, state.incomes, state.budgets, ph, today, state.baseSalary, state.installYMD, halfLimitOf(ph.id), goalOfHalf(state.halfLimits, ph.id, state.savingsGoal));
   const prevAvgLiving = prev.rows.length ? Math.round(prev.rows.reduce((a, r) => a + r.living, 0) / prev.rows.length) : null;
 
   const s = openSheet(`
@@ -2925,16 +2992,20 @@ function openBudgetPlanner() {
   const paint = () => {
     const inc = income();
     const p = budgetPlan(inc, f.goal, f.living, f.limit);
-    const ch = budgetChoices(inc, f.goal, f.limit, bs.suggestion);
+    // 기본 급여와 다른 급여를 넣었을 때만 '다음 주기부터도' 스위치를 보여준다 (v6.0.0)
+    const showBase = state.baseSalary > 0 && f.salary > 0 && f.salary !== state.baseSalary;
     $('#bp-body', el).innerHTML = `
       <div class="entry-body">
         <h2 class="section-title" style="margin:8px 0 4px">수입</h2>
         <div class="plan">
-          <div class="plan-row"><span class="k">급여 (세후)${inc0.estimated && f.salary === inc0.salary ? '<span class="est">기본값</span>' : ''}</span>
+          <div class="plan-row"><span class="k">급여 (세후)${inc0.estimated && f.salary === inc0.salary ? '<span class="est">추정</span>' : ''}</span>
             <span class="v num"><button class="link-btn" id="bp-salary" style="padding:0">${formatWon(f.salary)}원</button></span></div>
           ${f.extras.map((x, i) => `<div class="extra-row"><span class="grow">${esc(x.name || '추가 수입')}</span>
             <span class="num">${formatWon(x.amount)}원</span>
             <button class="mini-btn" data-ex-del="${i}" aria-label="삭제">${ICON.close}</button></div>`).join('')}
+          ${showBase ? `<div class="switch-row">
+            <div class="grow">다음 주기부터도 이 급여로<small class="num">지금 기본 급여 ${formatWon(state.baseSalary)}원</small></div>
+            <label class="switch"><input type="checkbox" id="bp-base" ${f.setBase ? 'checked' : ''}><span></span></label></div>` : ''}
           <div class="plan-div"></div>
           <div class="plan-row head"><span class="k">이번 주기 수입</span><span class="v num">${formatWon(inc)}원</span></div>
         </div>
@@ -2945,78 +3016,53 @@ function openBudgetPlanner() {
           ${SAVE_GOALS.map(g => `<button data-goal="${g}" class="${Math.abs(f.goal - g) < 0.001 ? 'on' : ''}">${Math.round(g * 100)}%</button>`).join('')}
           <button data-goal="custom" class="${SAVE_GOALS.some(g => Math.abs(f.goal - g) < 0.001) ? '' : 'on'}">직접</button>
         </div>
+        ${prev.total.rate !== null ? `<div class="hint num">지난 반기(${esc(ph.label)}) 실제 저축률 <b>${pctText(prev.total.rate)}</b>${prev.estimated ? ' · 추정 포함' : ''}</div>` : ''}
 
         <div class="plan">
           <div class="plan-row head"><span class="k">쓸 수 있는 돈</span><span class="v num">${formatWon(p.spendable)}원</span></div>
           <div class="plan-row"><span class="k">생활비 예산 (월)</span>
             <span class="stepper"><button data-liv="-1">−</button><span class="v num">${formatWon(f.living)}</span><button data-liv="1">+</button></span></div>
-          <div class="plan-row"><span class="k">특별지출 (월)</span><span class="v num">${formatWon(p.specialMonthly)}원</span></div>
-          <div class="plan-row sub"><span class="k">→ 반기 한도</span><span class="v num">${formatWon(f.limit)}원</span></div>
-          <div class="plan-div"></div>
-          <div class="plan-row head ${p.ok ? '' : 'bad'}"><span class="k">남는 돈</span><span class="v num">${formatWon(p.rest)}원</span></div>
+          ${fixedTotal ? `<div class="plan-row sub ${f.living < fixedTotal ? 'bad' : ''}"><span class="k">이 중 고정지출</span><span class="v num">${formatWon(fixedTotal)}원</span></div>` : ''}
+          <div class="plan-row"><span class="k">특별지출 한도 (반기)</span><span class="v num">${formatWon(f.limit)}원</span></div>
         </div>
-        ${p.ok ? '' : `<div class="hint" style="color:var(--danger)">목표 저축률보다 ${formatWon(-p.rest)}원 더 쓰는 예산이에요. 저장은 되지만 실제 저축률은 ${pctText(p.rate)}가 돼요.</div>`}
+        ${p.ok ? '' : `<div class="hint" style="color:var(--danger)">생활비와 특별지출이 쓸 수 있는 돈보다 ${formatWon(-p.rest)}원 많아요. 저장은 되지만 저축률은 ${pctText(p.rate)}가 돼요.</div>`}
 
-        <h2 class="section-title" style="margin:16px 0 4px">지난 반기 결과 · ${esc(ph.label)}</h2>
-        <div class="plan">
-          ${prev.total.rate !== null ? `<div class="plan-row ${prev.total.rate >= f.goal ? 'good' : 'bad'}"><span class="k">실제 저축률${prev.estimated ? '<span class="est">추정 포함</span>' : ''}</span><span class="v num">${pctText(prev.total.rate)}</span></div>` : '<div class="plan-row sub"><span class="k">실제 저축률</span><span class="v">기록이 없어요</span></div>'}
-          ${prevAvgLiving !== null ? `<div class="plan-row sub"><span class="k">주기 평균 생활비 (${prev.rows.length}개)</span><span class="v num">${formatWon(prevAvgLiving)}원</span></div>` : ''}
-          ${prevHalfSpecial ? `<div class="plan-row sub"><span class="k">특별지출 합계</span><span class="v num">${formatWon(prevHalfSpecial)}원 (월 ${formatWon(Math.round(prevHalfSpecial / 6))})</span></div>` : '<div class="plan-row sub"><span class="k">특별지출 합계</span><span class="v">기록이 없어요</span></div>'}
-          <div class="plan-div"></div>
-          ${bs.suggestion ? `<div class="plan-row sub"><span class="k">최근 ${bs.suggestion.count}개 주기 생활비 중앙값</span><span class="v num">${formatWon(bs.suggestion.median)}원</span></div>
-          <div class="plan-row sub ${f.living >= bs.suggestion.median ? 'good' : 'bad'}"><span class="k">생활비 예산 − 실적</span><span class="v num">${f.living - bs.suggestion.median >= 0 ? '+' : '−'}${formatWon(Math.abs(f.living - bs.suggestion.median))}원</span></div>` : '<div class="plan-row sub"><span class="k">생활비 실적</span><span class="v">아직 끝난 주기가 없어요</span></div>'}
+        ${prevAvgLiving !== null || bs.suggestion ? `<h2 class="section-title" style="margin:16px 0 4px">참고</h2>
+        <div class="plan" style="margin-top:0">
+          ${prevAvgLiving !== null ? `<div class="plan-row sub"><span class="k">지난 반기 평균 생활비 (${prev.rows.length}개 주기)</span><span class="v num">${formatWon(prevAvgLiving)}원</span></div>` : ''}
+          ${bs.suggestion ? `<div class="plan-row sub"><span class="k">최근 ${bs.suggestion.count}개 주기 생활비 중앙값</span><span class="v num">${formatWon(bs.suggestion.median)}원</span></div>` : ''}
         </div>
-        <div class="dual">
-          <button data-pick-liv="${ch.fromGoal}" class="${f.living === ch.fromGoal ? 'on' : ''}">목표 역산<b class="num">${formatMan(ch.fromGoal)}</b></button>
-          ${ch.fromHistory !== null ? `<button data-pick-liv="${ch.fromHistory}" class="${f.living === ch.fromHistory ? 'on' : ''}">실적 기준<b class="num">${formatMan(ch.fromHistory)}</b></button>` : '<button disabled>실적 기준<b>-</b></button>'}
-        </div>
+        ${bs.suggestion && f.living !== bs.suggestion.amount ? `<button class="secondary" data-pick-liv="${bs.suggestion.amount}">생활비를 실적 기준 ${formatMan(bs.suggestion.amount)}으로</button>` : ''}` : ''}
 
-        <h2 class="section-title" style="margin:16px 0 4px">이 예산대로 가면</h2>
-        <div class="plan">
-          <div class="plan-row head"><span class="k">매달 저축</span><span class="v num">${formatWon(p.saved)}원</span></div>
-          <div class="plan-row ${p.ok ? 'good' : 'bad'}"><span class="k">저축률</span><span class="v num">${pctText(p.rate)}</span></div>
-          ${prev.total.rate !== null ? `<div class="plan-row sub"><span class="k">지난 반기 실제</span><span class="v num">${pctText(prev.total.rate)}</span></div>` : ''}
-          <div class="plan-row sub"><span class="k">연</span><span class="v num">${formatWon(roundTo(p.yearly, 1000))}원</span></div>
-        </div>
         <button class="primary" id="bp-save" style="margin-top:14px" ${inc > 0 && f.living > 0 ? '' : 'disabled'}>${inc > 0 ? (f.living > 0 ? '예산 저장' : '생활비 예산을 정하세요') : '급여를 넣어 주세요'}</button>
-        <div class="hint">저장하면 ${c.name} 주기(${shortDate(c.start)}–${shortDate(c.end)}) 생활비 예산과 ${h.label} 특별지출 한도가 같이 정해져요. 급여는 이 주기에만 저장돼요.</div>
+        <div class="hint">${!state.baseSalary ? '처음 넣는 급여는 다음 주기부터 기본 급여가 돼요.' : showBase && f.setBase ? '다음 주기부터 기본 급여도 바뀌어요. 지난 주기 저축률은 그대로예요.' : '급여는 이 주기에만 저장돼요.'}</div>
       </div>`;
 
-    // 목표율·생활비 조절
-    el.querySelectorAll('[data-goal]').forEach(b => b.onclick = async () => {
+    // 목표율·생활비 조절 → 특별지출 한도가 따라 움직인다
+    el.querySelectorAll('[data-goal]').forEach(b => b.onclick = () => {
       if (b.dataset.goal === 'custom') {
-        openPercentSheet(f.goal, v => { f.goal = v; f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); });
+        openPercentSheet(f.goal, v => { f.goal = v; relimit(); paint(); });
         return;
       }
-      f.goal = Number(b.dataset.goal);
-      f.limit = suggestHalfLimit(income(), f.goal, f.living);
-      paint();
+      f.goal = Number(b.dataset.goal); relimit(); paint();
     });
     el.querySelectorAll('[data-liv]').forEach(b => b.onclick = () => {
       const next = f.living + Number(b.dataset.liv) * LIVING_STEP;
       if (next < 0) return;
-      f.living = next;
-      f.limit = suggestHalfLimit(income(), f.goal, f.living);
-      paint();
+      f.living = next; relimit(); paint();
     });
-    el.querySelectorAll('[data-pick-liv]').forEach(b => b.onclick = () => {
-      f.living = Number(b.dataset.pickLiv);
-      f.limit = suggestHalfLimit(income(), f.goal, f.living);
-      paint();
-    });
+    el.querySelectorAll('[data-pick-liv]').forEach(b => b.onclick = () => { f.living = Number(b.dataset.pickLiv); relimit(); paint(); });
+    const baseSw = $('#bp-base', el);
+    if (baseSw) baseSw.onchange = () => { f.setBase = baseSw.checked; paint(); };
     // 급여·추가 수입
     $('#bp-salary', el).onclick = () => openAmountSheet({
       title: `${shortDate(c.start)} 받는 급여 (세후)`,
       initial: f.salary,
-      hint: state.baseSalary ? `기본 급여 ${formatWon(state.baseSalary)}원 · 이 주기만 바뀌어요` : '처음 넣는 급여는 다음 주기 기본값이 돼요',
-      onSave: n => { f.salary = n; f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); },
+      hint: state.baseSalary ? `기본 급여 ${formatWon(state.baseSalary)}원` : '처음 넣는 급여는 다음 주기부터 기본 급여가 돼요',
+      onSave: n => { f.salary = n; relimit(); paint(); },
     });
-    $('#bp-extra', el).onclick = () => openExtraSheet(x => { f.extras.push(x); f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); });
-    el.querySelectorAll('[data-ex-del]').forEach(b => b.onclick = () => {
-      f.extras.splice(Number(b.dataset.exDel), 1);
-      f.limit = suggestHalfLimit(income(), f.goal, f.living);
-      paint();
-    });
+    $('#bp-extra', el).onclick = () => openExtraSheet(x => { f.extras.push(x); relimit(); paint(); });
+    el.querySelectorAll('[data-ex-del]').forEach(b => b.onclick = () => { f.extras.splice(Number(b.dataset.exDel), 1); relimit(); paint(); });
     // 저장
     const save = $('#bp-save', el);
     save.onclick = async () => {
@@ -3024,21 +3070,26 @@ function openBudgetPlanner() {
       save.disabled = true;
       const now = Date.now();
       const budget = { cycleId: c.id, amount: f.living, suggested: bs.suggestion ? bs.suggestion.amount : null, confirmedAt: now };
-      const limit = { halfId: h.id, amount: f.limit, confirmedAt: now };
+      // 목표 저축률을 반기에 같이 남긴다 (v6.0.0)
+      const limit = { halfId: h.id, amount: f.limit, goal: f.goal, confirmedAt: now };
       const incomeRec = { cycleId: c.id, salary: f.salary, extras: f.extras, editedAt: now };
-      try { await dbSavePlan(budget, limit, incomeRec); }
+      // 기본 급여를 바꾸기 전에, 급여를 넣지 않은 지난 주기를 옛 금액으로 고정한다 (v6.0.0)
+      const baseChange = state.baseSalary > 0 && f.salary > 0 && f.salary !== state.baseSalary && f.setBase;
+      const frozen = baseChange ? freezeIncomes(state.incomes, today, state.installYMD, state.baseSalary, now) : [];
+      try { await dbSavePlan(budget, limit, incomeRec, frozen); }
       catch (e) { toast('저장하지 못했어요'); save.disabled = false; return; }
       state.budgets[c.id] = budget;
       state.halfLimits[h.id] = limit;
       state.incomes[c.id] = incomeRec;
+      frozen.forEach(r => { state.incomes[r.cycleId] = r; });
       // 이 생활비를 반기 끝까지 다음 주기 제안값으로 이어 쓴다 (v4.0.2)
       state.livingPlan = { halfId: h.id, amount: f.living, savedAt: now };
       await dbPut('meta', { key: 'livingPlan', value: state.livingPlan }).catch(() => {});
       if (Math.abs(state.savingsGoal - f.goal) > 0.001) {
-        state.savingsGoal = f.goal;
+        state.savingsGoal = f.goal; // 새 반기의 기본 목표
         await dbPut('meta', { key: 'savingsGoal', value: f.goal }).catch(() => {});
       }
-      if (!state.baseSalary && f.salary > 0) {
+      if ((!state.baseSalary && f.salary > 0) || baseChange) {
         state.baseSalary = f.salary;
         await dbPut('meta', { key: 'baseSalary', value: f.salary }).catch(() => {});
       }
@@ -3606,15 +3657,12 @@ function openEntry(tx) {
 function openSettings() {
   const pg = openPage(`
     <div class="topbar"><button class="icon-btn" data-back aria-label="뒤로">${ICON.back}</button><h1 style="flex:1;margin-left:4px">설정</h1></div>
-    <section class="section"><h2 class="section-title">예산 · 분류 기준</h2>
-      <button class="list-row" id="s-budget"><span class="grow">이번 주기 생활비 예산</span><span class="val num" id="s-budget-val"></span>${ICON.chev}</button>
+    <section class="section"><h2 class="section-title">돈 계획</h2>
+      <button class="list-row" id="s-plan"><span class="grow">급여 · 목표 저축률 · 예산</span><span class="val">예산 탭</span>${ICON.chev}</button>
+      <div class="hint">급여, 목표 저축률, 생활비 예산, 특별지출 한도는 예산 탭의 '예산 짜기'에서 한 번에 정해요.</div></section>
+    <section class="section"><h2 class="section-title">분류 기준</h2>
       <button class="list-row" id="s-threshold"><span class="grow">특별지출 기준 금액</span><span class="val num" id="s-threshold-val"></span>${ICON.chev}</button>
       <div class="hint">기준 금액 이상을 입력하면 특별지출로 분류할지 한 번 물어봐요. 파일에서 가져올 때도 이 금액 이상은 확인 대기함으로 올려서 물어봐요.</div></section>
-    <section class="section"><h2 class="section-title">수입 · 목표</h2>
-      <button class="list-row" id="s-salary"><span class="grow">기본 급여 (세후)</span><span class="val num" id="s-salary-val"></span>${ICON.chev}</button>
-      <button class="list-row" id="s-goal"><span class="grow">목표 저축률</span><span class="val num" id="s-goal-val"></span>${ICON.chev}</button>
-      <button class="list-row" id="s-limit"><span class="grow">이번 반기 특별지출 한도</span><span class="val num" id="s-limit-val"></span>${ICON.chev}</button>
-      <div class="hint">기본 급여를 바꾸면 <b>앞으로의 주기</b> 기본값만 바뀌어요. 지나간 주기는 그대로 남아요. 지난 주기 급여는 예산 탭의 주기별 목록을 눌러 고치세요.</div></section>
     <section class="section"><h2 class="section-title">가져오기</h2>
       <button class="list-row" id="s-pending"><span class="grow">확인할 내역</span><span class="val num" id="s-pending-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-methods"><span class="grow">제외할 결제수단</span><span class="val num" id="s-methods-val"></span>${ICON.chev}</button>
@@ -3630,8 +3678,6 @@ function openSettings() {
   const el = pg.el;
 
   const paintTop = () => {
-    const b = budgetState();
-    $('#s-budget-val', el).textContent = b.amount === null ? '미설정' : `${formatWon(b.amount)}원${b.provisional ? ' (제안)' : ''}`;
     $('#s-threshold-val', el).textContent = `${formatWon(state.threshold)}원`;
     const pend = pendingRows().length;
     $('#s-pending-val', el).textContent = pend ? `${pend}건` : '없음';
@@ -3639,10 +3685,6 @@ function openSettings() {
     $('#s-rules-val', el).textContent = `${Object.keys(state.rules).length}개`;
     $('#s-batches-val', el).textContent = `${state.batches.length}회`;
     $('#s-every-val', el).textContent = state.importEvery ? `${state.importEvery}일마다` : '안 함';
-    $('#s-salary-val', el).textContent = state.baseSalary ? `${formatWon(state.baseSalary)}원` : '미설정';
-    $('#s-goal-val', el).textContent = pctText(state.savingsGoal);
-    const hl = halfLimitOf(halfOf(todayYMD()).id);
-    $('#s-limit-val', el).textContent = hl ? `${formatWon(hl)}원` : '미설정';
   };
   const paintCats = () => {
     $('#s-cats', el).innerHTML = state.cats.map((c, i) => `
@@ -3661,37 +3703,13 @@ function openSettings() {
       paintCats();
     });
   };
-  $('#s-budget', el).onclick = () => openAmountSheet({
-    title: `${cycleOf(todayYMD()).name} 생활비 예산`,
-    initial: budgetState().amount || 0,
-    hint: (() => { const sg = budgetState().suggestion; return sg ? `최근 ${sg.count}개 주기 중앙값 ${formatMan(sg.median)}원` : '이번 주기에 생활비로 쓸 금액'; })(),
-    onSave: async n => { const b = budgetState(); await saveBudget(b.cycle.id, n, true, b.suggestion ? b.suggestion.amount : null); paintTop(); toast('생활비 예산을 저장했어요'); },
-  });
+  $('#s-plan', el).onclick = () => { pg.close(); setTimeout(() => switchTab('budget'), 60); };
   $('#s-threshold', el).onclick = () => openAmountSheet({
     title: '특별지출 기준 금액',
     initial: state.threshold,
     hint: '이미 저장된 내역에는 적용되지 않아요',
     onSave: async n => { state.threshold = n; await dbPut('meta', { key: 'specialThreshold', value: n }); paintTop(); toast('기준 금액을 저장했어요'); },
   });
-  $('#s-salary', el).onclick = () => openAmountSheet({
-    title: '기본 급여 (세후)',
-    initial: state.baseSalary,
-    hint: '앞으로의 주기에 자동으로 들어가는 금액이에요. 지나간 주기는 바뀌지 않아요',
-    onSave: async n => { state.baseSalary = n; await dbPut('meta', { key: 'baseSalary', value: n }); paintTop(); toast('기본 급여를 저장했어요'); },
-  });
-  $('#s-goal', el).onclick = () => openPercentSheet(state.savingsGoal, async v => {
-    state.savingsGoal = v; await dbPut('meta', { key: 'savingsGoal', value: v }).catch(() => {});
-    paintTop(); toast('목표 저축률을 저장했어요');
-  });
-  $('#s-limit', el).onclick = () => {
-    const h = halfOf(todayYMD());
-    openAmountSheet({
-      title: `${h.label} 특별지출 한도`,
-      initial: halfLimitOf(h.id) || 0,
-      hint: '반기 단위예요. 급여와 목표 저축률로 계산하려면 예산 탭의 \'예산 짜기\'를 쓰세요',
-      onSave: async n => { await saveHalfLimit(h.id, n); paintTop(); toast('한도를 저장했어요'); },
-    });
-  };
   $('#s-pending', el).onclick = () => { if (pendingRows().length) openPending(); else toast('확인할 내역이 없어요'); };
   $('#s-every', el).onclick = () => openEveryPicker(paintTop);
   $('#s-methods', el).onclick = () => openMethodPicker(paintTop);
