@@ -444,6 +444,21 @@ button.list-row:active{opacity:.6}
 .dual button b{font-size:16px;font-weight:700;color:var(--text)}
 .dual button.on{background:var(--accent-weak);color:var(--accent)}
 
+/* ---------- 예산 탭 (v5.0.0) ---------- */
+.rp-k{font-size:14px;color:var(--sub);margin-top:6px}
+.rp-gap.good{color:var(--accent);font-weight:600}
+.rp-gap.bad{color:var(--danger);font-weight:600}
+.rp-row{display:block;width:100%;text-align:left;padding:11px 0;border-bottom:1px solid var(--line)}
+.rp-row:last-of-type{border-bottom:0}
+.rp-row:active{opacity:.6}
+.rp-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.rp-top .t{font-size:15px;font-weight:600;white-space:nowrap}
+.rp-top .t small{font-size:12px;font-weight:400;color:var(--sub);margin-left:4px}
+.rp-top .a{font-size:15px;font-weight:600;white-space:nowrap}
+.rp-top .a.bad{color:var(--danger)}
+.rp-sub{font-size:13px;color:var(--sub);margin-top:2px;line-height:1.5}
+.rp-sub .over{color:var(--danger)}
+
 #toast{
   position:fixed;left:50%;z-index:60;bottom:calc(var(--safe-bottom) + 150px);transform:translate(-50%,20px);
   background:rgba(25,31,40,.92);color:#fff;padding:12px 20px;border-radius:24px;font-size:15px;
@@ -464,14 +479,14 @@ button.list-row:active{opacity:.6}
   <button class="tab" data-tab="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>내역</button>
   <button class="tab" data-tab="fixed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>고정지출</button>
   <button class="tab" data-tab="goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>특별지출</button>
-  <button class="tab" data-tab="salary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V13M12 20V8M19 20V4"/></svg>급여</button>
+  <button class="tab" data-tab="budget"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V13M12 20V8M19 20V4"/></svg>예산</button>
 </nav>
 
 <div id="toast"></div>
 
 <script>
 'use strict';
-const APP_VERSION = '4.0.2';
+const APP_VERSION = '5.0.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -1221,7 +1236,7 @@ function lastImported(rows) {
 }
 
 /* =====================================================================
-   4단계 (v4.0.0) — 여행·이벤트 / 반기 특별지출 한도 / 수입·안 쓴 돈
+   4단계 (v4.0.0) — 여행·이벤트 / 반기 특별지출 한도 / 수입·저축
    ===================================================================== */
 
 /* ---- 여행·이벤트 ----
@@ -1388,9 +1403,10 @@ function earliestHalf(txs, today) {
   return halfOf(d || today);
 }
 
-/* ---- 수입 · 안 쓴 돈 · 저축률 ----
+/* ---- 수입 · 저축 · 저축률 ----
    계좌 잔고는 알 수 없다 (가져오기에서 내계좌이체·저축·투자를 전부 뺐다).
-   그래서 '저축'이 아니라 '안 쓴 돈'으로 부른다. = 수입 − (생활비 + 그 주기 특별지출) */
+   v4에서는 그래서 '안 쓴 돈'으로 불렀다. v5.0.0에서 사용자 요청으로 화면 이름을 '저축'으로 바꿨다.
+   뜻은 같다: 저축 = 수입 − (생활비 + 그 주기 특별지출). 계좌 잔고가 아니다 (화면 안내 문구로 밝힌다) */
 /** 그 주기 수입. 주기에 기록이 없으면 기본 급여를 소급 적용하고 estimated=true를 붙인다 */
 function cycleIncome(incomes, cycleId, baseSalary) {
   const rec = (incomes || {})[cycleId];
@@ -1400,7 +1416,7 @@ function cycleIncome(incomes, cycleId, baseSalary) {
   const extra = extras.reduce((s, x) => s + (x.amount || 0), 0);
   return { cycleId, salary, extras, extra, total: salary + extra, estimated: !has };
 }
-/** 한 주기의 안 쓴 돈. 특별지출은 그 주기에 실제로 발생한 것만 뺀다 */
+/** 한 주기의 저축(수입 − 쓴 돈). 특별지출은 그 주기에 실제로 발생한 것만 뺀다 */
 function cycleSaving(txs, incomes, cycleId, baseSalary) {
   const [y, m] = cycleId.split('-').map(Number);
   const c = cycleOf(`${y}-${pad(m)}-${pad(PAYDAY)}`);
@@ -1411,7 +1427,7 @@ function cycleSaving(txs, incomes, cycleId, baseSalary) {
   const saved = income.total - spent;
   return { cycle: c, income, living, special, spent, saved, rate: income.total > 0 ? saved / income.total : null };
 }
-/** 이미 끝난 주기 최근 n개의 안 쓴 돈 평균. sinceYMD보다 앞으로는 가지 않는다 */
+/** 이미 끝난 주기 최근 n개의 저축 평균. sinceYMD보다 앞으로는 가지 않는다 */
 function savingTrend(txs, incomes, today, baseSalary, sinceYMD, n = 3) {
   const floor = sinceYMD || txs.map(t => t.date).sort()[0] || today;
   const out = [];
@@ -1439,7 +1455,7 @@ function suggestHalfLimit(income, goalRate, living) {
   const monthly = Math.round(income * (1 - goalRate)) - living;
   return Math.max(0, roundTo(monthly * 6, 10000));
 }
-/** 예산 한 벌의 결과: 남는 돈, 이 예산대로 갔을 때 안 쓰는 돈과 비율 */
+/** 예산 한 벌의 결과: 남는 돈, 이 예산대로 갔을 때 저축과 비율 */
 function budgetPlan(income, goalRate, living, halfLimit) {
   const specialMonthly = Math.round((halfLimit || 0) / 6);
   const spendable = Math.round(income * (1 - goalRate));
@@ -1457,6 +1473,55 @@ function budgetChoices(income, goalRate, halfLimit, suggestion) {
   return { fromGoal, fromHistory: suggestion ? suggestion.amount : null };
 }
 const pctText = r => (r === null || r === undefined ? '-' : `${(Math.round(r * 1000) / 10).toFixed(1)}%`);
+
+/* =====================================================================
+   5단계 (v5.0.0) — 예산 탭 리포트
+   한 반기의 '끝난' 주기만 센다. 주기 중간 숫자는 매일 흔들리기 때문이다.
+   특별지출은 주기별 속도로 판단하지 않는다 (4단계 4-1). 반기 누적과 한도만 비교한다.
+   ===================================================================== */
+/** 반기 리포트.
+ *  rows    = 끝난 주기별 {cycle, income, living, special, spent, saved, rate, budget, diff}
+ *  total   = 수입이 있는 주기만 합친 {income, living, special, spent, saved, rate}
+ *  gap     = 실제 저축률 − 목표 (%p가 아니라 비율. 0.031 = 3.1%p)
+ *  overrun = livingOverrun 결과 (생활비 초과분)
+ *  special = 반기 특별지출 전체(오늘까지) · 한도 · 남은 돈
+ *  sinceYMD 이전에 끝난 주기는 넣지 않는다 (기록이 없던 시절) */
+function halfReport(txs, incomes, budgets, h, today, baseSalary, sinceYMD, limit, goal) {
+  const floor = sinceYMD || txs.map(t => t.date).sort()[0] || today;
+  const rows = [];
+  let c = cycleOf(h.start);
+  while (c.start <= h.end) {
+    if (c.end < today && c.end >= floor) {
+      const r = cycleSaving(txs, incomes, c.id, baseSalary);
+      const rec = (budgets || {})[c.id];
+      const budget = rec && rec.amount > 0 ? rec.amount : null;
+      rows.push({ ...r, budget, diff: budget !== null ? r.living - budget : null });
+    }
+    c = nextCycle(c);
+  }
+  const paid = rows.filter(r => r.income.total > 0);
+  const sum = k => paid.reduce((s, r) => s + r[k], 0);
+  const income = paid.reduce((s, r) => s + r.income.total, 0);
+  const saved = sum('saved');
+  const rate = income > 0 ? saved / income : null;
+  const spec = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, h.start, [h.end, today].sort()[0])));
+  return {
+    half: h, rows, count: paid.length,
+    estimated: paid.some(r => r.income.estimated),
+    total: { income, living: sum('living'), special: sum('special'), spent: sum('spent'), saved, rate },
+    goal: goal ?? null,
+    gap: rate !== null && goal != null ? rate - goal : null,
+    overrun: livingOverrun(txs, budgets, h, today),
+    special: { spent: spec, limit: limit || null, left: limit ? limit - spec : null },
+  };
+}
+/** 리포트에서 ◀ 를 어디까지 누를 수 있는지: 내역이 있는 가장 이른 반기 */
+function earliestAnyHalf(txs, today) {
+  const d = txs.map(t => t.date).sort()[0];
+  return halfOf(d || today);
+}
+/** %p 표기: 0.031 → '+3.1%p', -0.031 → '−3.1%p' */
+const ppText = d => (d === null || d === undefined ? '-' : `${d >= 0 ? '+' : '−'}${(Math.round(Math.abs(d) * 1000) / 10).toFixed(1)}%p`);
 /*LOGIC-END*/
 
 /* =====================================================================
@@ -1665,6 +1730,8 @@ const state = {
   // v4.0.0
   events: [], halfLimits: {}, incomes: {},
   baseSalary: 0, savingsGoal: 0.4, halfRef: null, halfCat: null, livingPlan: null,
+  // v5.0.0
+  budgetRef: null,
 };
 const SAVE_GOALS = [0.4, 0.45, 0.5];
 const $ = (s, el = document) => el.querySelector(s);
@@ -2426,20 +2493,149 @@ function openFixedEditor(fx) {
 }
 
 /* =====================================================================
-   화면: 준비 중 (4~5단계)
+   화면: 예산 (v5.0.0)
+   위: 이번 반기 계획 + 예산 짜기 / 아래: 반기 결과(끝난 주기만) + 주기별
+   리포트에는 '목표 저축률을 지켰나, 못 지켰다면 어디서 차이가 났나'만 담는다.
    ===================================================================== */
-const PLACEHOLDERS = {
-  salary: ['💰', '급여', '5단계에서 만들어요'],
-};
-function renderPlaceholder(tab) {
-  const [e, t, d] = PLACEHOLDERS[tab];
-  $('#view').innerHTML = `<div class="topbar"><h1>${t}</h1></div>
-    <div class="placeholder"><div class="big">${e}</div><b>준비 중이에요</b>${d}</div>`;
+function renderBudget() {
+  const today = todayYMD();
+  const ref = state.budgetRef || today;
+  const isCurrent = !state.budgetRef;
+  const h = halfOf(ref), hNow = halfOf(today), cNow = cycleOf(today);
+  const first = earliestAnyHalf(state.txs, today);
+  const goal = state.savingsGoal;
+  const rp = halfReport(state.txs, state.incomes, state.budgets, h, today, state.baseSalary, state.installYMD, halfLimitOf(h.id), goal);
+
+  // ---- 이번 반기 계획
+  const inc = incomeOf(cNow.id);
+  const living = budgetOfCycle(cNow.id) ?? planLivingFor(state.livingPlan, today);
+  const limitNow = halfLimitOf(hNow.id);
+  const plan = inc.total && living !== null ? budgetPlan(inc.total, goal, living, limitNow || 0) : null;
+  const planCard = `<section class="section">
+      <div class="gauge-head"><span class="cyc-name">${esc(hNow.label)} 계획</span><span class="num">목표 ${pctText(goal)}</span></div>
+      ${plan ? `<div class="plan" style="margin-top:8px">
+        <div class="plan-row"><span class="k">수입 · ${cNow.name} 주기${inc.estimated ? '<span class="est">추정</span>' : ''}</span><span class="v num">${formatWon(inc.total)}원</span></div>
+        <div class="plan-row sub"><span class="k">− 생활비 예산</span><span class="v num">${formatWon(plan.living)}원</span></div>
+        <div class="plan-row sub"><span class="k">− 특별지출 ${limitNow ? `${formatMan(limitNow)} ÷ 6` : '(한도 없음)'}</span><span class="v num">${formatWon(plan.specialMonthly)}원</span></div>
+        <div class="plan-div"></div>
+        <div class="plan-row head"><span class="k">매달 저축</span><span class="v num">${formatWon(plan.saved)}원</span></div>
+        <div class="plan-row ${plan.ok ? 'good' : 'bad'}"><span class="k">저축률</span><span class="v num">${pctText(plan.rate)}</span></div>
+      </div>` : `<div class="hint">${inc.total ? '생활비 예산을 정하면 계획 저축률을 계산해 드려요' : '급여를 넣으면 계획 저축률을 계산해 드려요'}</div>`}
+      <button class="primary" data-open-plan style="margin-top:14px">예산 짜기</button>
+    </section>`;
+
+  // ---- 반기 결과
+  const nav = `<span class="cyc-nav">
+      <button class="cyc-btn" data-bhalf="-1" ${h.start > first.start ? '' : 'disabled'} aria-label="이전 반기">${ICON.back}</button>
+      <span class="cyc-name">${esc(h.label)} 결과</span>
+      <button class="cyc-btn" data-bhalf="1" ${isCurrent ? 'disabled' : ''} aria-label="다음 반기">${ICON.fwd}</button>
+    </span>`;
+  const t = rp.total;
+  let body;
+  if (!rp.rows.length) {
+    body = `<div class="empty">아직 끝난 주기가 없어요<br>주기가 끝나는 25일마다 결과가 쌓여요</div>
+      ${h.start > first.start ? '<div class="hint" style="text-align:center;margin-top:0">‹ 를 누르면 지난 반기를 볼 수 있어요</div>' : ''}`;
+  } else if (t.rate === null) {
+    body = `<div class="empty">급여를 넣으면 저축률을 보여드려요</div>`;
+  } else {
+    const ovLines = rp.overrun.items.filter(x => x.diff > 0);
+    const hasBudget = rp.rows.some(r => r.budget !== null);
+    const sp = rp.special;
+    body = `
+      <div class="rp-k">저축률</div>
+      <div class="gauge-amt num">${(Math.round(t.rate * 1000) / 10).toFixed(1)}<small>%</small></div>
+      <div class="gauge-of num">목표 ${pctText(goal)} · <span class="rp-gap ${rp.gap >= 0 ? 'good' : 'bad'}">${ppText(rp.gap)}</span></div>
+      <div class="hl-left" style="margin-top:8px">저축 <b class="num" style="color:${t.saved < 0 ? 'var(--danger)' : 'var(--text)'}">${formatWon(t.saved)}원</b> <span class="num" style="color:var(--sub);font-size:14px">· 수입 ${formatWon(t.income)}원 중</span></div>
+      <h2 class="section-title" style="margin:16px 0 4px">목표 대비</h2>
+      <div class="plan" style="margin-top:0">
+        ${ovLines.length ? ovLines.map(x => `<div class="plan-row"><span class="k">생활비 초과 · ${x.cycle.name} 주기</span><span class="v num" style="color:var(--danger)">−${formatWon(x.diff)}원</span></div>`).join('')
+          : `<div class="plan-row sub ${hasBudget ? 'good' : ''}"><span class="k">생활비</span><span class="v">${hasBudget ? '예산 안에서 썼어요' : '예산을 정한 주기가 없어요'}</span></div>`}
+        <div class="plan-div"></div>
+        <div class="plan-row"><span class="k">특별지출 · ${isCurrent ? '지금까지' : '반기 전체'}</span><span class="v num">${formatWon(sp.spent)}원</span></div>
+        <div class="plan-row sub ${sp.left !== null && sp.left < 0 ? 'bad' : ''}"><span class="k">${sp.limit ? `한도 ${formatWon(sp.limit)}원` : '한도'}</span><span class="v num">${sp.limit ? (sp.left >= 0 ? `남은 ${formatWon(sp.left)}원` : `${formatWon(-sp.left)}원 초과`) : '정하지 않았어요'}</span></div>
+      </div>
+      <div class="hint">저축은 계좌 잔고가 아니라 <b>수입에서 쓴 돈을 뺀 금액</b>이에요.${rp.estimated ? ' <span class="est">추정</span>은 급여를 넣지 않아 기본 급여로 채운 주기예요.' : ''}</div>`;
+  }
+  const result = `<section class="section">
+      <div class="gauge-head">${nav}</div>
+      ${body}
+    </section>`;
+
+  // ---- 주기별
+  const rows = rp.rows.length ? `<section class="section">
+      <h2 class="section-title">주기별</h2>
+      ${rp.rows.map(r => {
+        const bad = r.rate !== null && r.rate < goal;
+        return `<button class="rp-row" data-inc="${r.cycle.id}">
+          <div class="rp-top"><span class="t">${r.cycle.name} 주기<small class="num">${shortDate(r.cycle.start)}–${shortDate(r.cycle.end)}</small></span>
+            <span class="a num ${bad || r.saved < 0 ? 'bad' : ''}">${formatMan(r.saved)} · ${pctText(r.rate)}</span></div>
+          <div class="rp-sub num">수입 ${formatMan(r.income.total)}${r.income.estimated ? '<span class="est">추정</span>' : ''} · 생활비 ${formatMan(r.living)}${r.diff !== null && r.diff > 0 ? ` <span class="over">(+${formatMan(r.diff)})</span>` : ''} · 특별 ${formatMan(r.special)}</div>
+        </button>`;
+      }).join('')}
+      <div class="hint">누르면 그 주기 급여와 추가 수입을 고칠 수 있어요.${isCurrent ? ` 이번 ${cNow.name} 주기는 ${shortDate(cNow.end)}에 끝나면 들어가요.` : ''}</div>
+    </section>` : '';
+
+  $('#view').innerHTML = `
+    <div class="topbar"><h1>예산</h1></div>
+    ${planCard}${result}${rows}`;
+
+  const el = $('#view');
+  el.querySelectorAll('[data-open-plan]').forEach(b => b.onclick = () => openBudgetPlanner());
+  el.querySelectorAll('[data-bhalf]').forEach(b => b.onclick = () => {
+    if (b.disabled) return;
+    state.budgetRef = shiftHalfRef(ref, Number(b.dataset.bhalf), today);
+    renderBudget();
+  });
+  el.querySelectorAll('[data-inc]').forEach(b => b.onclick = () => openIncomeEditor(b.dataset.inc));
+}
+
+/** 지난 주기 수입 고치기 (v5.0.0). 그 주기에만 저장된다. 기본 급여는 설정에서만 바뀐다 */
+function openIncomeEditor(cycleId) {
+  const [y, m] = cycleId.split('-').map(Number);
+  const c = cycleOf(`${y}-${pad(m)}-${pad(PAYDAY)}`);
+  const inc0 = incomeOf(cycleId);
+  const f = { salary: inc0.salary || 0, extras: (inc0.extras || []).map(x => ({ ...x })) };
+  const s = openSheet(`
+    <div class="sheet-head">
+      <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">${c.name} 주기 수입<small class="num" style="display:block;font-size:12px;font-weight:400;color:var(--sub);text-align:center">${shortDate(c.start)} – ${shortDate(c.end)}</small></div><span style="width:44px"></span>
+    </div>
+    <div id="ie-body"></div>`);
+  const el = s.el;
+  const paint = () => {
+    const total = f.salary + f.extras.reduce((a, x) => a + (x.amount || 0), 0);
+    $('#ie-body', el).innerHTML = `
+      <div class="plan">
+        <div class="plan-row"><span class="k">${shortDate(c.start)} 받은 급여 (세후)${inc0.estimated && f.salary === inc0.salary ? '<span class="est">추정</span>' : ''}</span>
+          <span class="v num"><button class="link-btn" id="ie-salary" style="padding:0">${formatWon(f.salary)}원</button></span></div>
+        ${f.extras.map((x, i) => `<div class="extra-row"><span class="grow">${esc(x.name || '추가 수입')}</span>
+          <span class="num">${formatWon(x.amount)}원</span>
+          <button class="mini-btn" data-ex-del="${i}" aria-label="삭제">${ICON.close}</button></div>`).join('')}
+        <div class="plan-div"></div>
+        <div class="plan-row head"><span class="k">이 주기 수입</span><span class="v num">${formatWon(total)}원</span></div>
+      </div>
+      <button class="link-btn" id="ie-extra">+ 추가 수입 넣기</button>
+      <button class="primary" id="ie-save" style="margin-top:8px" ${total > 0 ? '' : 'disabled'}>저장</button>
+      <div class="hint">이 주기만 바뀌어요. 앞으로의 기본 급여는 설정에서 바꿔요.</div>`;
+    $('#ie-salary', el).onclick = () => openAmountSheet({
+      title: `${shortDate(c.start)} 받은 급여 (세후)`,
+      initial: f.salary,
+      hint: '이 주기 수입만 바뀌어요',
+      onSave: n => { f.salary = n; paint(); },
+    });
+    $('#ie-extra', el).onclick = () => openExtraSheet(x => { f.extras.push(x); paint(); });
+    el.querySelectorAll('[data-ex-del]').forEach(b => b.onclick = () => { f.extras.splice(Number(b.dataset.exDel), 1); paint(); });
+    $('#ie-save', el).onclick = async () => {
+      try { await saveIncome(cycleId, f.salary, f.extras); } catch (e) { toast('저장하지 못했어요'); return; }
+      s.close(); render(); toast(`${c.name} 주기 수입을 저장했어요`);
+    };
+  };
+  paint();
 }
 
 /* =====================================================================
    화면: 특별지출 (v4.0.0)
-   반기 한도 · 여행/이벤트 · 안 쓴 돈
+   반기 한도 · 여행/이벤트 (저축 · 예산 짜기는 v5.0.0에서 예산 탭으로 옮겼다)
    페이스와 하루 사용 가능 금액은 쓰지 않는다. 특별지출은 하루씩 쓰는 돈이 아니다.
    ===================================================================== */
 function halfNavHTML(h, canPrev, canNext) {
@@ -2471,8 +2667,6 @@ function renderSpecial() {
   const s = halfStats(state.txs, state.events, state.cats, ref, limit, ov.over);
   const first = earliestHalf(state.txs, today);
   const evs = eventList(state.txs, state.events);
-  const trend = savingTrend(state.txs, state.incomes, today, state.baseSalary, state.installYMD);
-  const inc = incomeOf(cycleOf(today).id);
 
   // ---- 반기 한도 카드
   const eff = s.effLimit;
@@ -2506,7 +2700,7 @@ function renderSpecial() {
         <div class="gauge-amt num">${formatWon(s.spent)}<small>원</small></div>
         <div class="gauge-of num">${s.count}건 · ${shortDate(h.start)} – ${shortDate(h.end)}</div>
         <div class="delta-line">한도를 정하면 남은 금액과 예정까지 같이 보여드려요.
-          <br><button class="link-btn" data-open-plan>예산 짜기</button></div>
+          <br><button class="link-btn" data-go-budget>예산 탭에서 정하기</button></div>
       </section>`;
 
   // ---- 큰 건
@@ -2545,49 +2739,10 @@ function renderSpecial() {
       }).join('') : `<div class="empty">여행이나 이벤트를 만들면 그 기간 지출이 자동으로 묶여요<br>묶인 지출은 항상 특별지출로 잡혀요</div>`}
     </section>`;
 
-  // ---- 안 쓴 돈
-  const savedSec = (() => {
-    if (!inc.total) {
-      return `<section class="section">
-        <h2 class="section-title">안 쓴 돈</h2>
-        <div class="empty">급여를 넣으면 저축률과 연간 예상을 보여드려요</div>
-        <button class="primary" data-open-plan>예산 짜기</button>
-      </section>`;
-    }
-    // 이번 주기 예산이 아직 없으면 예산 짜기에서 정한 계획을 쓴다 (v4.0.2)
-    const living = budgetOfCycle(cycleOf(today).id) ?? planLivingFor(state.livingPlan, today);
-    const plan = living !== null ? budgetPlan(inc.total, state.savingsGoal, living, limit || 0) : null;
-    return `<section class="section">
-      <h2 class="section-title">안 쓴 돈</h2>
-      ${plan ? `<div class="plan">
-        <div class="plan-row"><span class="k">수입${inc.estimated ? '<span class="est">추정</span>' : ''}</span><span class="v num">${formatWon(inc.total)}원</span></div>
-        <div class="plan-row sub"><span class="k">− 생활비 예산</span><span class="v num">${formatWon(plan.living)}원</span></div>
-        <div class="plan-row sub"><span class="k">− 특별지출 ${formatMan(plan.halfLimit)} ÷ 6</span><span class="v num">${formatWon(plan.specialMonthly)}원</span></div>
-        <div class="plan-div"></div>
-        <div class="plan-row head"><span class="k">매달 안 쓰는 돈</span><span class="v num">${formatWon(plan.saved)}원</span></div>
-        <div class="plan-row ${plan.ok ? 'good' : 'bad'}"><span class="k">저축률 (목표 ${pctText(state.savingsGoal)})</span><span class="v num">${pctText(plan.rate)}</span></div>
-        <div class="plan-row sub"><span class="k">연</span><span class="v num">${formatWon(roundTo(plan.yearly, 1000))}원</span></div>
-      </div>` : `<div class="hint" style="margin-top:0">생활비 예산을 정하면 계획 저축률을 계산해 드려요</div>`}
-      ${trend ? `<div class="plan">
-        <div class="plan-row head"><span class="k">지금 속도</span><span class="v num">${pctText(trend.rate)}</span></div>
-        <div class="plan-row sub"><span class="k">최근 ${trend.count}개 주기 평균 안 쓴 돈</span><span class="v num">${formatWon(trend.avgSaved)}원</span></div>
-        <div class="plan-row sub"><span class="k">이 속도면 연</span><span class="v num">${formatWon(roundTo(trend.yearly, 1000))}원</span></div>
-        ${plan ? `<div class="plan-div"></div>
-        <div class="plan-row ${trend.rate >= plan.rate ? 'good' : 'bad'}"><span class="k">계획 대비</span><span class="v num">${trend.rate >= plan.rate ? '+' : '−'}${(Math.abs(trend.rate - plan.rate) * 100).toFixed(1)}%p</span></div>` : ''}
-      </div>` : '<div class="hint">끝난 주기가 쌓이면 실제 속도와 비교해 드려요</div>'}
-      ${ov.items.length ? `<h2 class="section-title" style="margin:16px 0 4px">주기별 생활비 결과 · ${esc(h.label)}</h2>
-      <div class="plan">
-        ${ov.items.map(x => `<div class="plan-row sub ${x.diff > 0 ? 'bad' : 'good'}"><span class="k">${x.cycle.name} 주기<br><small class="num">예산 ${formatMan(x.budget)} · 실적 ${formatMan(x.living)}</small></span><span class="v num">${x.diff > 0 ? `+${formatMan(x.diff)} 초과` : x.diff < 0 ? `${formatMan(-x.diff)} 절약` : '딱 맞음'}</span></div>`).join('')}
-        ${ov.over ? `<div class="plan-div"></div><div class="plan-row sub"><span class="k">넘친 만큼 특별지출에서 빼요</span><span class="v num" style="color:var(--danger)">−${formatWon(ov.over)}원</span></div>` : ''}
-      </div>` : ''}
-      <div class="hint">계좌 잔고는 앱이 알 수 없어요. 여기 숫자는 <b>수입에서 쓴 돈을 뺀 금액</b>이에요.</div>
-      <button class="secondary" data-open-plan>예산 짜기</button>
-    </section>`;
-  })();
 
   $('#view').innerHTML = `
-    <div class="topbar"><h1>특별지출</h1><button class="text-btn" data-open-plan>예산 짜기</button></div>
-    ${gauge}${bigSec}${monthSec}${evSec}${savedSec}
+    <div class="topbar"><h1>특별지출</h1></div>
+    ${gauge}${bigSec}${monthSec}${evSec}
     ${isCurrent ? '' : '<div class="hint" style="text-align:center;margin:0 24px">지난 반기를 보고 있어요</div>'}`;
 
   const el = $('#view');
@@ -2596,7 +2751,7 @@ function renderSpecial() {
     state.halfRef = shiftHalfRef(ref, Number(b.dataset.half), today);
     renderSpecial(); el.scrollTop = 0;
   });
-  el.querySelectorAll('[data-open-plan]').forEach(b => b.onclick = () => openBudgetPlanner());
+  el.querySelectorAll('[data-go-budget]').forEach(b => b.onclick = () => switchTab('budget'));
   el.querySelectorAll('[data-ev-add]').forEach(b => b.onclick = () => openEventEditor());
   el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => openEventDetail(eventById(b.dataset.ev)));
 }
@@ -2753,10 +2908,11 @@ function openBudgetPlanner() {
   if (!f.living && income()) f.living = Math.max(0, roundTo(Math.round(income() * (1 - f.goal)) * 0.85, LIVING_STEP));
   if (!f.limit) f.limit = suggestHalfLimit(income(), f.goal, f.living);
 
-  const prevHalfSpecial = (() => {
-    const ph = halfOf(addDays(h.start, -1));
-    return sumAmount(state.txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, ph.end)));
-  })();
+  const ph = halfOf(addDays(h.start, -1));
+  const prevHalfSpecial = sumAmount(state.txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, ph.end)));
+  // 지난 반기 결과를 예산 짜기에 보여준다 (v5.0.0). 예산 탭 리포트와 같은 계산이다
+  const prev = halfReport(state.txs, state.incomes, state.budgets, ph, today, state.baseSalary, state.installYMD, halfLimitOf(ph.id), state.savingsGoal);
+  const prevAvgLiving = prev.rows.length ? Math.round(prev.rows.reduce((a, r) => a + r.living, 0) / prev.rows.length) : null;
 
   const s = openSheet(`
     <div class="sheet-head">
@@ -2801,11 +2957,14 @@ function openBudgetPlanner() {
         </div>
         ${p.ok ? '' : `<div class="hint" style="color:var(--danger)">목표 저축률보다 ${formatWon(-p.rest)}원 더 쓰는 예산이에요. 저장은 되지만 실제 저축률은 ${pctText(p.rate)}가 돼요.</div>`}
 
-        <h2 class="section-title" style="margin:16px 0 4px">실적과 비교</h2>
+        <h2 class="section-title" style="margin:16px 0 4px">지난 반기 결과 · ${esc(ph.label)}</h2>
         <div class="plan">
-          ${bs.suggestion ? `<div class="plan-row sub"><span class="k">최근 ${bs.suggestion.count}개 주기 생활비 중앙값</span><span class="v num">${formatWon(bs.suggestion.median)}원</span></div>` : '<div class="plan-row sub"><span class="k">생활비 실적</span><span class="v">아직 끝난 주기가 없어요</span></div>'}
-          ${prevHalfSpecial ? `<div class="plan-row sub"><span class="k">지난 반기 특별지출</span><span class="v num">${formatWon(prevHalfSpecial)}원 (월 ${formatWon(Math.round(prevHalfSpecial / 6))})</span></div>` : '<div class="plan-row sub"><span class="k">지난 반기 특별지출</span><span class="v">기록이 없어요</span></div>'}
-          ${bs.suggestion ? `<div class="plan-div"></div><div class="plan-row sub ${f.living >= bs.suggestion.median ? 'good' : 'bad'}"><span class="k">생활비 예산 − 실적</span><span class="v num">${f.living - bs.suggestion.median >= 0 ? '+' : '−'}${formatWon(Math.abs(f.living - bs.suggestion.median))}원</span></div>` : ''}
+          ${prev.total.rate !== null ? `<div class="plan-row ${prev.total.rate >= f.goal ? 'good' : 'bad'}"><span class="k">실제 저축률${prev.estimated ? '<span class="est">추정 포함</span>' : ''}</span><span class="v num">${pctText(prev.total.rate)}</span></div>` : '<div class="plan-row sub"><span class="k">실제 저축률</span><span class="v">기록이 없어요</span></div>'}
+          ${prevAvgLiving !== null ? `<div class="plan-row sub"><span class="k">주기 평균 생활비 (${prev.rows.length}개)</span><span class="v num">${formatWon(prevAvgLiving)}원</span></div>` : ''}
+          ${prevHalfSpecial ? `<div class="plan-row sub"><span class="k">특별지출 합계</span><span class="v num">${formatWon(prevHalfSpecial)}원 (월 ${formatWon(Math.round(prevHalfSpecial / 6))})</span></div>` : '<div class="plan-row sub"><span class="k">특별지출 합계</span><span class="v">기록이 없어요</span></div>'}
+          <div class="plan-div"></div>
+          ${bs.suggestion ? `<div class="plan-row sub"><span class="k">최근 ${bs.suggestion.count}개 주기 생활비 중앙값</span><span class="v num">${formatWon(bs.suggestion.median)}원</span></div>
+          <div class="plan-row sub ${f.living >= bs.suggestion.median ? 'good' : 'bad'}"><span class="k">생활비 예산 − 실적</span><span class="v num">${f.living - bs.suggestion.median >= 0 ? '+' : '−'}${formatWon(Math.abs(f.living - bs.suggestion.median))}원</span></div>` : '<div class="plan-row sub"><span class="k">생활비 실적</span><span class="v">아직 끝난 주기가 없어요</span></div>'}
         </div>
         <div class="dual">
           <button data-pick-liv="${ch.fromGoal}" class="${f.living === ch.fromGoal ? 'on' : ''}">목표 역산<b class="num">${formatMan(ch.fromGoal)}</b></button>
@@ -2814,8 +2973,9 @@ function openBudgetPlanner() {
 
         <h2 class="section-title" style="margin:16px 0 4px">이 예산대로 가면</h2>
         <div class="plan">
-          <div class="plan-row head"><span class="k">매달 안 쓰는 돈</span><span class="v num">${formatWon(p.saved)}원</span></div>
+          <div class="plan-row head"><span class="k">매달 저축</span><span class="v num">${formatWon(p.saved)}원</span></div>
           <div class="plan-row ${p.ok ? 'good' : 'bad'}"><span class="k">저축률</span><span class="v num">${pctText(p.rate)}</span></div>
+          ${prev.total.rate !== null ? `<div class="plan-row sub"><span class="k">지난 반기 실제</span><span class="v num">${pctText(prev.total.rate)}</span></div>` : ''}
           <div class="plan-row sub"><span class="k">연</span><span class="v num">${formatWon(roundTo(p.yearly, 1000))}원</span></div>
         </div>
         <button class="primary" id="bp-save" style="margin-top:14px" ${inc > 0 && f.living > 0 ? '' : 'disabled'}>${inc > 0 ? (f.living > 0 ? '예산 저장' : '생활비 예산을 정하세요') : '급여를 넣어 주세요'}</button>
@@ -2919,7 +3079,7 @@ function openExtraSheet(onAdd) {
       <div class="title">추가 수입</div><span style="width:44px"></span></div>
     <div class="amount-display num" id="ex-amt"></div>
     <input id="ex-name" class="memo" placeholder="이름 (예: 성과급)" maxlength="20" autocomplete="off">
-    <div class="hint" style="text-align:center;margin:8px 0 12px">이번 주기 수입에 더해져요. 저축률 계산에도 들어가요.</div>
+    <div class="hint" style="text-align:center;margin:8px 0 12px">이 주기 수입에 더해져요. 저축률 계산에도 들어가요.</div>
     <div class="keypad">${keys.map(k => `<button class="key num" data-key="${k}">${k === 'back' ? ICON.del : k}</button>`).join('')}</div>
     <button class="primary" id="ex-save" disabled>넣기</button>`);
   const el = s.el, amtEl = $('#ex-amt', el), save = $('#ex-save', el);
@@ -2945,7 +3105,7 @@ function render() {
   else if (state.tab === 'list') renderList();
   else if (state.tab === 'fixed') renderFixed();
   else if (state.tab === 'goal') renderSpecial();
-  else renderPlaceholder(state.tab);
+  else if (state.tab === 'budget') renderBudget();
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
 }
 function switchTab(tab) {
@@ -3454,7 +3614,7 @@ function openSettings() {
       <button class="list-row" id="s-salary"><span class="grow">기본 급여 (세후)</span><span class="val num" id="s-salary-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-goal"><span class="grow">목표 저축률</span><span class="val num" id="s-goal-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-limit"><span class="grow">이번 반기 특별지출 한도</span><span class="val num" id="s-limit-val"></span>${ICON.chev}</button>
-      <div class="hint">기본 급여를 바꾸면 <b>앞으로의 주기</b> 기본값만 바뀌어요. 지나간 주기는 그대로 남아요. 이번 주기 급여만 고치려면 특별지출 탭의 '예산 짜기'에서 바꾸세요.</div></section>
+      <div class="hint">기본 급여를 바꾸면 <b>앞으로의 주기</b> 기본값만 바뀌어요. 지나간 주기는 그대로 남아요. 지난 주기 급여는 예산 탭의 주기별 목록을 눌러 고치세요.</div></section>
     <section class="section"><h2 class="section-title">가져오기</h2>
       <button class="list-row" id="s-pending"><span class="grow">확인할 내역</span><span class="val num" id="s-pending-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-methods"><span class="grow">제외할 결제수단</span><span class="val num" id="s-methods-val"></span>${ICON.chev}</button>
@@ -3528,7 +3688,7 @@ function openSettings() {
     openAmountSheet({
       title: `${h.label} 특별지출 한도`,
       initial: halfLimitOf(h.id) || 0,
-      hint: '반기 단위예요. 급여와 목표 저축률로 계산하려면 특별지출 탭의 \'예산 짜기\'를 쓰세요',
+      hint: '반기 단위예요. 급여와 목표 저축률로 계산하려면 예산 탭의 \'예산 짜기\'를 쓰세요',
       onSave: async n => { await saveHalfLimit(h.id, n); paintTop(); toast('한도를 저장했어요'); },
     });
   };
@@ -3775,6 +3935,7 @@ async function init() {
     if (document.querySelector('.sheet,.page')) return;
     state.homeRef = null; // 앱을 다시 열면 언제나 이번 주기부터
     state.halfRef = null; // 특별지출도 이번 반기부터
+    state.budgetRef = null; // 예산 탭 리포트도 이번 반기부터
     render();
   });
 }
