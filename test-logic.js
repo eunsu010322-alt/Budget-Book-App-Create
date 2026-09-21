@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,coverageStart,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES,eventForDate,eventIdFor,retagEvents,catBreakdown,eventStats,eventList,plannedSpecial,monthlySpecial,halfStats,shiftHalfRef,earliestHalf,cycleIncome,cycleSaving,savingTrend,suggestHalfLimit,budgetPlan,budgetChoices,pctText,nextCycle,addDays,diffDays};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,coverageStart,planLivingFor,filterTxList,listSummary,livingOverrun,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES,eventForDate,eventIdFor,retagEvents,catBreakdown,eventStats,eventList,plannedSpecial,monthlySpecial,halfStats,shiftHalfRef,earliestHalf,cycleIncome,cycleSaving,savingTrend,suggestHalfLimit,budgetPlan,budgetChoices,pctText,nextCycle,addDays,diffDays};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -478,5 +478,51 @@ const pLiving=L.makeImportTx(pRow,pCats,T,'z','t10',1,'living');
 eq('생활비를 고르면 생활비로 남는다',[pLiving.kind,pLiving.kindSource],['living','asked']);
 const pBig=L.makeImportTx({...pRow,amount:1200000},pCats,T,'z','t11',1,'living');
 eq('큰 지출을 생활비로 골라도 유지',[pBig.kind,pBig.kindSource],['living','asked']);
+
+console.log('[주기 이름 = 끝나는 달 (v4.0.2)]');
+eq('8/25~9/24는 9월 (id는 그대로 2026-08)',[L.cycleOf('2026-09-21').name,L.cycleOf('2026-09-21').id],['9월','2026-08']);
+eq('8/10은 8월 주기 (7/25~8/24)',[L.cycleOf('2026-08-10').name,L.cycleOf('2026-08-10').start],['8월','2026-07-25']);
+eq('25일부터 새 이름',[L.cycleOf('2026-09-24').name,L.cycleOf('2026-09-25').name],['9월','10월']);
+eq('연말 12/25~1/24는 1월',[L.cycleOf('2026-12-30').name,L.cycleOf('2027-01-10').name,L.cycleOf('2026-12-30').id],['1월','1월','2026-12']);
+eq('label도 끝 달',L.cycleOf('2026-09-21').label,'9월 주기');
+eq('내역 칩도 끝 달 이름',L.cyclesInData([tx('2026-08-10',1)],'2026-09-21').map(c=>c.name),['9월','8월']);
+
+console.log('[내역 필터 (v4.0.2)]');
+const lft=[
+  {id:'a1',date:'2026-09-01',time:'10:00',amount:10000,categoryId:'a',kind:'living',status:'active',merchant:'김밥'},
+  {id:'a2',date:'2026-09-02',time:'10:00',amount:450000,categoryId:'b',kind:'special',status:'active',merchant:'아이폰'},
+  {id:'a3',date:'2026-09-03',time:'10:00',amount:-50000,categoryId:'b',kind:'special',status:'active',merchant:'정산'},
+  {id:'a4',date:'2026-09-04',time:'10:00',amount:90000,categoryId:'a',kind:'special',status:'canceled',merchant:'취소된 건'},
+  {id:'a5',date:'2026-08-10',time:'10:00',amount:300000,categoryId:'a',kind:'special',status:'active',merchant:'자전거'},
+];
+eq('특별지출만',L.filterTxList(lft,{special:true}).map(t=>t.id),['a4','a3','a2','a5']);
+eq('특별지출 + 카테고리',L.filterTxList(lft,{special:true,catId:'b'}).map(t=>t.id),['a3','a2']);
+eq('특별지출 + 주기(9월 = 8/25~9/24)',L.filterTxList(lft,{special:true,cycleId:'2026-08'}).map(t=>t.id),['a4','a3','a2']);
+eq('필터 없으면 전부',L.filterTxList(lft,{cycleId:'all',catId:'all'}).length,5);
+eq('검색',L.filterTxList(lft,{q:'아이'}).map(t=>t.id),['a2']);
+eq('요약: 취소 건 빼고 합계 (환급 반영)',L.listSummary(L.filterTxList(lft,{special:true,cycleId:'2026-08'})),{count:2,total:400000});
+
+console.log('[생활비 초과 → 반기 한도 (v4.0.2)]');
+// 하반기(7/25~1/24). 9월 주기(8/25~9/24) 173만 · 10월 주기(9/25~10/24) 145만, 예산 150만
+const oh=L.halfOf('2026-10-30');
+const otx=[tx('2026-07-30',1500000),tx('2026-08-30',1730000),tx('2026-09-30',1450000),tx('2026-10-28',2000000)];
+const obud={'2026-07':{amount:1500000},'2026-08':{amount:1500000},'2026-09':{amount:1500000},'2026-10':{amount:1500000}};
+const ov=L.livingOverrun(otx,obud,oh,'2026-10-30');
+eq('끝난 주기만 (이번 주기 11월은 아직)',ov.items.map(x=>[x.cycle.name,x.diff]),[['8월',0],['9월',230000],['10월',-50000]]);
+eq('넘친 것만 합친다 (아낀 5만은 더하지 않음)',ov.over,230000);
+eq('예산 없는 주기는 건너뜀',L.livingOverrun(otx,{'2026-08':{amount:1500000}},oh,'2026-10-30').items.map(x=>x.cycle.id),['2026-08']);
+eq('주기가 끝나기 전엔 반영 안 함',L.livingOverrun(otx,obud,oh,'2026-09-20').items.map(x=>x.cycle.id),['2026-07']);
+const hs0=L.halfStats([],[],[],'2026-10-30',1560000);
+const hs1=L.halfStats([tx('2026-10-01',500000,{kind:'special'})],[],[],'2026-10-30',1560000,230000);
+eq('초과 없으면 한도 그대로',[hs0.limit,hs0.effLimit,hs0.overrun],[1560000,1560000,0]);
+eq('실제로 쓸 수 있는 돈 = 156만 − 23만',[hs1.limit,hs1.effLimit],[1560000,1330000]);
+eq('남은 돈·비율은 실제 기준',[hs1.left,hs1.pct],[830000,38]);
+const hs2=L.halfStats([],[],[],'2026-10-30',200000,300000);
+eq('초과가 한도보다 크면 바로 초과 경고',[hs2.effLimit,hs2.level,hs2.pct],[-100000,'over',0]);
+
+console.log('[예산 짜기 계획 이어 쓰기 (v4.0.2)]');
+eq('같은 반기면 계획 금액',L.planLivingFor({halfId:'2026-H2',amount:1500000},'2026-10-30'),1500000);
+eq('반기가 바뀌면 null → 실적 제안으로',L.planLivingFor({halfId:'2026-H2',amount:1500000},'2027-01-25'),null);
+eq('계획이 없으면 null',[L.planLivingFor(null,'2026-10-30'),L.planLivingFor({halfId:'2026-H2',amount:0},'2026-10-30')],[null,null]);
 
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);
