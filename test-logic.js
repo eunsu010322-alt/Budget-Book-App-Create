@@ -1,6 +1,6 @@
 const fs=require('fs');const html=fs.readFileSync(require('path').join(__dirname,process.env.TARGET||'index.html'),'utf8');
 const code=html.split('/*LOGIC-START*/')[1].split('/*LOGIC-END*/')[0];
-const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES};')();
+const L=new Function(code+';return {cycleOf,prevCycle,homeStats,keypadInput,changeRate,median,roundTo,formatMan,classifyAuto,resolveKind,recomputeKind,reassignCategory,halfOf,cumulativeSeries,suggestBudget,minus5,paceOf,fixedDateInCycle,nextFixedDate,payDayLabel,fixedCycleView,upcomingFixed,dueFixed,fixedKey,makeFixedTx,passedThisCycle,recordFromOnCreate,recordFromOnEdit,reassignFixed,earliestCycle,shiftCycleRef,cycleDays,lastImportYMD,importDue,bulkSetCategory,bulkSetKind,cyclesInData,excelDate,excelTime,cellDate,cellTime,cellSec,cellNum,parseSharedStrings,parseSheet,parseBanksaladRows,rowKey,rowId,hashStr,normalizeName,ruleKey,classifyRow,planImport,makeImportTx,catIdByName,lastImported,reassignRules,importSummary,BS_DEFAULT_CHARGE,BS_DEFAULT_RULES,eventForDate,eventIdFor,retagEvents,catBreakdown,eventStats,eventList,plannedSpecial,monthlySpecial,halfStats,shiftHalfRef,earliestHalf,cycleIncome,cycleSaving,savingTrend,suggestHalfLimit,budgetPlan,budgetChoices,pctText,nextCycle,addDays,diffDays};')();
 let pass=0,fail=0;const eq=(n,a,b)=>{const ok=JSON.stringify(a)===JSON.stringify(b);ok?pass++:fail++;console.log(ok?'✓':'✗',n,ok?'':`→ ${JSON.stringify(a)} ≠ ${JSON.stringify(b)}`)};
 console.log('[주기]');
 eq('24일은 전 주기',L.cycleOf('2026-09-24').id,'2026-08');
@@ -314,5 +314,147 @@ const ct = [tx('2026-09-15', 1), tx('2026-08-01', 1), tx('2026-06-30', 1)];
 eq('내역이 있는 주기만 (최근 순)', L.cyclesInData(ct, '2026-09-18').map(c => c.id), ['2026-08', '2026-07', '2026-06']);
 eq('이번 주기는 내역이 없어도 포함', L.cyclesInData([tx('2026-06-30', 1)], '2026-09-18').map(c => c.id), ['2026-08', '2026-06']);
 eq('개수 제한', L.cyclesInData(ct, '2026-09-18', 2).length, 2);
+
+/* =====================================================================
+   4단계 (v4.0.0)
+   ===================================================================== */
+console.log('[이벤트: 기간 판정]');
+const EV = (id, name, start, end, estimate, createdAt) => ({ id, name, start, end, estimate, createdAt });
+const ev1 = EV('e1', '제주 여행', '2026-10-03', '2026-10-06', 400000, 100);
+const ev2 = EV('e2', '결혼식', '2026-10-05', '2026-10-05', 150000, 200);
+eq('기간 안', L.eventForDate([ev1], '2026-10-04').id, 'e1');
+eq('시작일 포함', L.eventForDate([ev1], '2026-10-03').id, 'e1');
+eq('종료일 포함', L.eventForDate([ev1], '2026-10-06').id, 'e1');
+eq('하루 전은 안 붙음', L.eventForDate([ev1], '2026-10-02'), null);
+eq('하루 뒤는 안 붙음', L.eventForDate([ev1], '2026-10-07'), null);
+eq('이벤트가 없으면 null', L.eventForDate([], '2026-10-04'), null);
+eq('겹치면 나중에 만든 것', L.eventForDate([ev1, ev2], '2026-10-05').id, 'e2');
+eq('겹치지 않는 날은 원래 것', L.eventForDate([ev1, ev2], '2026-10-04').id, 'e1');
+eq('가져온 내역도 날짜만 보고 붙는다', L.eventIdFor({ date: '2026-10-04', eventSource: 'auto', method: 'import' }, [ev1]), 'e1');
+eq('직접 뗀 건은 다시 붙이지 않음', L.eventIdFor({ date: '2026-10-04', eventSource: 'manual', eventId: null }, [ev1]), null);
+eq('직접 붙인 건은 유지', L.eventIdFor({ date: '2026-12-01', eventSource: 'manual', eventId: 'e1' }, [ev1]), 'e1');
+eq('eventSource가 없으면 auto로 본다 (v3 데이터)', L.eventIdFor({ date: '2026-10-04' }, [ev1]), 'e1');
+
+console.log('[이벤트: 태그 다시 계산]');
+const RT = (id, date, extra = {}) => ({ id, date, amount: 50000, categoryId: 'a', status: 'active', kind: 'living', kindSource: 'auto', eventId: null, ...extra });
+const rtTxs = [RT('x1', '2026-10-04'), RT('x2', '2026-10-20'), RT('x3', '2026-10-04', { kindSource: 'manual', eventSource: 'manual' })];
+const rtCh = L.retagEvents(rtTxs, [ev1], cm, T, 7);
+eq('기간 안의 건만 바뀜', rtCh.map(t => t.id), ['x1']);
+eq('태그가 붙고 특별지출이 됨', [rtCh[0].eventId, rtCh[0].kind, rtCh[0].eventSource], ['e1', 'special', 'auto']);
+eq('updatedAt 갱신', rtCh[0].updatedAt, 7);
+eq('원본은 그대로', rtTxs[0].eventId, null);
+const rtOff = L.retagEvents([RT('y1', '2026-10-04', { kind: 'special', eventId: 'e1', eventSource: 'auto' })], [], cm, T, 8);
+eq('이벤트를 지우면 태그가 풀리고 생활비로 돌아온다', [rtOff[0].eventId, rtOff[0].kind], [null, 'living']);
+const rtMan = L.retagEvents([RT('z1', '2026-10-04', { kindSource: 'manual', eventSource: 'auto' })], [ev1], cm, T, 9);
+eq('직접 바꾼 분류는 태그가 붙어도 유지', [rtMan[0].eventId, rtMan[0].kind, rtMan[0].kindSource], ['e1', 'living', 'manual']);
+eq('기간이 안 겹치면 바뀌는 게 없음', L.retagEvents([RT('w1', '2026-11-01')], [ev1], cm, T, 10).length, 0);
+eq('이벤트 태그는 답한 분류보다 우선', L.resolveKind({ amount: 500000, categoryId: 'a', eventId: 'e1', kind: 'living', kindSource: 'asked' }, cm, T).kind, 'special');
+
+console.log('[이벤트: 집계]');
+const eTx = [
+  { id: 'a1', date: '2026-10-03', amount: 200000, categoryId: 'a', status: 'active', kind: 'special', eventId: 'e1' },
+  { id: 'a2', date: '2026-10-04', amount: 100000, categoryId: 'b', status: 'active', kind: 'special', eventId: 'e1' },
+  { id: 'a3', date: '2026-10-05', amount: -30000, categoryId: 'b', status: 'active', kind: 'special', eventId: 'e1' },
+  { id: 'a4', date: '2026-10-05', amount: 50000, categoryId: 'a', status: 'canceled', kind: 'special', eventId: 'e1' },
+  { id: 'a5', date: '2026-11-01', amount: 70000, categoryId: 'a', status: 'active', kind: 'special', eventId: null },
+];
+const est = L.eventStats(eTx, ev1, cats);
+eq('총액은 환급을 반영한다', est.total, 270000);
+eq('쓴 돈 / 받은 돈', [est.spend, est.refund], [300000, -30000]);
+eq('취소 건은 제외', est.count, 3);
+eq('기간 일수', est.days, 4);
+eq('하루 평균', est.avgDaily, 67500);
+eq('카테고리 비중', est.catRows.map(r => [r.cat.id, Math.round(r.share * 100)]), [['a', 74], ['b', 26]]);
+eq('예상 대비 남은 금액', est.rest, 130000);
+eq('환급이 더 많은 카테고리는 따로', L.catBreakdown([{ categoryId: 'b', amount: -5000, status: 'active' }], cats).negRows.map(r => r.cat.id), ['b']);
+eq('이벤트 목록은 최근 시작일 순', L.eventList(eTx, [ev1, ev2]).map(x => x.event.id), ['e2', 'e1']);
+eq('이벤트 목록에 총액·건수', L.eventList(eTx, [ev1]).map(x => [x.count, x.total]), [[3, 270000]]);
+
+console.log('[반기 한도]');
+const HREF = '2026-09-18';
+const hTx = [...eTx, { id: 'p1', date: '2026-02-01', amount: 100000, categoryId: 'a', status: 'active', kind: 'special', eventId: null }];
+const hs = L.halfStats(hTx, [ev1, ev2], cats, HREF, 1800000);
+eq('반기', hs.half.id, '2026-H2');
+eq('반기 합계(취소 제외, 환급 반영)', hs.spent, 340000);
+eq('건수와 건당 평균', [hs.count, hs.avgEach], [4, 85000]);
+eq('남은 금액과 진행률', [hs.left, hs.pct], [1460000, 19]);
+eq('예정: 예상액 − 실제', hs.planned.items.map(x => [x.event.id, x.rest]), [['e1', 130000], ['e2', 150000]]);
+eq('예정 합계', hs.planned.total, 280000);
+eq('예정 포함 합계와 남은 돈', [hs.projected, hs.projectedLeft], [620000, 1180000]);
+eq('남은 돈으로 평균 규모 몇 건', hs.leftCount, Math.floor(1180000 / 85000));
+eq('큰 건은 지출(양수)만 · 큰 순서', hs.top.map(t => t.amount), [200000, 100000, 70000]);
+eq('큰 건 비중은 지출 합계 기준', Math.round(hs.topShare * 100), 100);
+eq('주기별 분포는 6개', hs.months.length, 6);
+eq('분포 첫 주기 / 지출이 있는 주기', [hs.months[0].cycle.id, hs.months.find(m => m.amount > 0).cycle.id], ['2026-07', '2026-09']);
+eq('10월 주기 분포 금액', hs.months.find(m => m.cycle.id === '2026-10').amount, 70000);
+eq('지난 반기 같은 시점', hs.prevSame, 100000);
+eq('지난 반기 전체', hs.prevTotal, 100000);
+eq('지난 반기 대비', hs.change, L.changeRate(340000, 100000));
+eq('한도 안이면 calm', hs.level, 'calm');
+eq('예정 포함해서 넘으면 warn', L.halfStats(hTx, [ev1, ev2], cats, HREF, 500000).level, 'warn');
+eq('실제로 넘으면 over', L.halfStats(hTx, [ev1, ev2], cats, HREF, 300000).level, 'over');
+eq('초과 금액은 음수로', L.halfStats(hTx, [], cats, HREF, 300000).left, -40000);
+eq('한도가 없으면 비율도 없음', [L.halfStats(hTx, [], cats, HREF, null).pct, L.halfStats(hTx, [], cats, HREF, null).left], [null, null]);
+eq('예상보다 실제를 더 쓰면 예정은 0', L.plannedSpecial(hTx, [EV('e1', 'x', '2026-10-03', '2026-10-06', 100000, 1)], L.halfOf(HREF)).total, 0);
+eq('반기 밖 이벤트는 예정에 없음', L.plannedSpecial(hTx, [EV('e9', 'x', '2027-03-01', '2027-03-02', 500000, 1)], L.halfOf(HREF)).total, 0);
+eq('반기 경계에 걸친 이벤트는 예정에 포함', L.plannedSpecial([], [EV('e8', 'x', '2027-01-20', '2027-01-30', 300000, 1)], L.halfOf(HREF)).total, 300000);
+
+console.log('[반기 넘기기]');
+eq('이전 반기로', L.shiftHalfRef('2026-09-18', -1, '2026-09-18'), '2026-07-24');
+eq('두 번 이전', L.shiftHalfRef(L.shiftHalfRef('2026-09-18', -1, '2026-09-18'), -1, '2026-09-18'), '2026-01-24');
+eq('다음으로 눌러 이번 반기면 null', L.shiftHalfRef('2026-07-24', 1, '2026-09-18'), null);
+eq('연 경계: 27년 1/10은 아직 26년 하반기', L.shiftHalfRef('2027-01-10', -1, '2027-01-10'), '2026-07-24');
+eq('연 경계: 27년 1/25부터 새 반기', L.halfOf('2027-01-25').id, '2027-H1');
+eq('특별지출이 있는 가장 이른 반기', L.earliestHalf(hTx, HREF).id, '2026-H1');
+eq('특별지출이 없으면 이번 반기', L.earliestHalf([], HREF).id, '2026-H2');
+eq('생활비만 있으면 이번 반기', L.earliestHalf([tx('2026-02-01', 1000)], HREF).id, '2026-H2');
+
+console.log('[수입]');
+const incs = { '2026-08': { cycleId: '2026-08', salary: 3300000, extras: [{ id: 'x', name: '성과급', amount: 800000 }], editedAt: 1 } };
+eq('그 주기 기록이 있으면 그것', [L.cycleIncome(incs, '2026-08', 3200000).salary, L.cycleIncome(incs, '2026-08', 3200000).total], [3300000, 4100000]);
+eq('추가 수입은 수입에 더한다', L.cycleIncome(incs, '2026-08', 3200000).extra, 800000);
+eq('기록이 있으면 추정 아님', L.cycleIncome(incs, '2026-08', 3200000).estimated, false);
+eq('기록이 없으면 기본 급여 소급', [L.cycleIncome(incs, '2026-07', 3200000).total, L.cycleIncome(incs, '2026-07', 3200000).estimated], [3200000, true]);
+eq('기본 급여도 없으면 0', L.cycleIncome({}, '2026-07', 0).total, 0);
+eq('급여 0원도 기록이면 추정 아님', L.cycleIncome({ '2026-07': { cycleId: '2026-07', salary: 0, extras: [] } }, '2026-07', 3200000).estimated, false);
+
+console.log('[안 쓴 돈]');
+const sv = [tx('2026-08-01', 1200000), tx('2026-08-10', 300000, { kind: 'special' }), tx('2026-08-05', 50000, { status: 'canceled' })];
+const cs = L.cycleSaving(sv, {}, '2026-07', 3200000);
+eq('주기 범위', [cs.cycle.start, cs.cycle.end], ['2026-07-25', '2026-08-24']);
+eq('생활비와 특별지출을 따로', [cs.living, cs.special], [1200000, 300000]);
+eq('쓴 돈과 안 쓴 돈', [cs.spent, cs.saved], [1500000, 1700000]);
+eq('저축률', cs.rate, 1700000 / 3200000);
+eq('취소 건은 빠진다', L.cycleSaving([tx('2026-08-01', 1000000, { status: 'canceled' })], {}, '2026-07', 3200000).saved, 3200000);
+eq('수입이 0이면 비율 없음', L.cycleSaving(sv, {}, '2026-07', 0).rate, null);
+const tr = L.savingTrend(sv, {}, '2026-09-18', 3200000, '2026-01-01', 3);
+eq('끝난 주기 3개', tr.count, 3);
+eq('평균 안 쓴 돈', tr.avgSaved, Math.round((1700000 + 3200000 + 3200000) / 3));
+eq('평균 수입', tr.avgIncome, 3200000);
+eq('연간 예상', tr.yearly, tr.avgSaved * 12);
+eq('평균 저축률', tr.rate, tr.avgSaved / 3200000);
+eq('급여가 없으면 null', L.savingTrend(sv, {}, '2026-09-18', 0, '2026-01-01', 3), null);
+eq('기준일보다 앞으로는 가지 않음', L.savingTrend(sv, {}, '2026-09-18', 3200000, '2026-08-01', 3).count, 1);
+eq('이번 주기는 넣지 않음', L.savingTrend(sv, {}, '2026-09-18', 3200000, '2026-01-01', 1).cycles[0].cycle.id, '2026-07');
+
+console.log('[예산 짜기]');
+eq('목표 45% → 반기 한도 156만', L.suggestHalfLimit(3200000, 0.45, 1500000), 1560000);
+eq('목표 40% → 반기 한도 252만', L.suggestHalfLimit(3200000, 0.4, 1500000), 2520000);
+eq('생활비가 쓸 수 있는 돈을 넘으면 0', L.suggestHalfLimit(3200000, 0.6, 1500000), 0);
+eq('수입이 없으면 0', L.suggestHalfLimit(0, 0.45, 1500000), 0);
+const bp = L.budgetPlan(3200000, 0.45, 1500000, 1560000);
+eq('특별지출 월분', bp.specialMonthly, 260000);
+eq('쓸 수 있는 돈', bp.spendable, 1760000);
+eq('딱 맞으면 남는 돈 0', [bp.rest, bp.ok], [0, true]);
+eq('안 쓰는 돈과 저축률', [bp.saved, bp.rate], [1440000, 0.45]);
+eq('연간', bp.yearly, 17280000);
+const bpBad = L.budgetPlan(3200000, 0.45, 1600000, 1560000);
+eq('목표를 못 맞추면 남는 돈이 음수', [bpBad.rest, bpBad.ok], [-100000, false]);
+eq('그래도 실제 저축률은 계산된다', bpBad.rate, 1340000 / 3200000);
+eq('한도가 없으면 특별지출 0', L.budgetPlan(3200000, 0.45, 1500000, 0).specialMonthly, 0);
+eq('수입이 없으면 비율 없음', L.budgetPlan(0, 0.45, 0, 0).rate, null);
+eq('생활비 제안 두 가지', L.budgetChoices(3200000, 0.45, 1560000, { amount: 1500000 }), { fromGoal: 1500000, fromHistory: 1500000 });
+eq('실적이 없으면 목표 역산만', L.budgetChoices(3200000, 0.45, 1560000, null).fromHistory, null);
+eq('비율 표기', [L.pctText(0.45), L.pctText(1340000 / 3200000), L.pctText(null)], ['45.0%', '41.9%', '-']);
 
 console.log(`\n${pass} 통과 / ${fail} 실패`);process.exit(fail?1:0);

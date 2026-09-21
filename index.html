@@ -391,6 +391,54 @@ button.list-row:active{opacity:.6}
 .imp-row .t{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .imp-row .s{font-size:13px;color:var(--sub)}
 
+/* ---------- 특별지출 · 예산 짜기 (v4.0.0) ---------- */
+.hl-bar{height:10px;border-radius:5px;background:var(--line);margin:12px 0 8px;overflow:hidden;position:relative}
+.hl-bar i{display:block;height:100%;border-radius:5px;background:var(--st,var(--accent));transition:width .4s ease}
+.hl-bar u{position:absolute;top:0;bottom:0;border-radius:5px;background:var(--st,var(--accent));opacity:.28}
+.hl-left{font-size:15px}
+.hl-left b{font-weight:700;color:var(--st,var(--accent))}
+.plan{background:var(--press);border-radius:16px;padding:14px;margin-top:12px}
+.plan-row{display:flex;justify-content:space-between;align-items:baseline;gap:8px;padding:5px 0;font-size:15px}
+.plan-row .k{color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plan-row .v{font-weight:600;white-space:nowrap;flex:none}
+.plan-row.head .k,.plan-row.head .v{font-weight:700;color:var(--text);font-size:16px}
+.plan-row.sub .k,.plan-row.sub .v{font-size:13px;color:var(--sub)}
+.plan-row.bad .v{color:var(--danger)}
+.plan-row.good .v{color:var(--accent)}
+.plan-div{height:1px;background:var(--line);margin:8px 0}
+.stepper{display:flex;align-items:center;gap:8px;flex:none}
+.stepper button{width:34px;height:34px;border-radius:11px;background:var(--card);font-size:19px;font-weight:600;display:grid;place-items:center}
+.stepper button:active{opacity:.6}
+.stepper button:disabled{opacity:.3}
+.stepper .v{min-width:96px;text-align:right;font-weight:700;font-size:16px}
+.mbars{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;align-items:end;height:92px;margin-top:6px}
+.mb{display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end;min-width:0}
+.mb i{display:block;width:100%;max-width:26px;border-radius:5px 5px 0 0;background:var(--accent);min-height:3px;transition:height .35s ease}
+.mb.zero i{background:var(--line)}
+.mb.now i{background:var(--text)}
+.mb span{font-size:11px;color:var(--sub);white-space:nowrap}
+.mb small{font-size:10px;color:var(--faint);white-space:nowrap}
+.big-row{display:flex;align-items:center;gap:12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.big-row:last-child{border-bottom:0}
+.big-row .grow{flex:1;min-width:0}
+.big-row .t{font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.big-row .s{font-size:12px;color:var(--sub)}
+.big-row .a{font-size:15px;font-weight:600;white-space:nowrap}
+.ev-right{text-align:right;flex:none}
+.ev-st{font-size:12px;color:var(--sub);margin-top:1px}
+.ev-st.plan{color:var(--accent);font-weight:600}
+.money-big{font-size:30px;font-weight:700;letter-spacing:-.02em;margin:2px 0 0;text-align:center}
+.money-big small{font-size:20px;font-weight:600;margin-left:2px}
+.rate-line{font-size:14px;color:var(--sub);margin-top:4px}
+.rate-line b{color:var(--text);font-weight:600}
+.est{font-size:11px;font-weight:600;color:var(--warn);background:rgba(240,140,0,.14);padding:1px 6px;border-radius:6px;margin-left:4px;vertical-align:1px}
+.extra-row{display:flex;align-items:center;gap:10px;padding:6px 0;font-size:15px}
+.extra-row .grow{flex:1;min-width:0}
+.dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.dual button{height:62px;border-radius:14px;background:var(--press);font-size:13px;color:var(--sub);font-weight:500;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:0 6px}
+.dual button b{font-size:16px;font-weight:700;color:var(--text)}
+.dual button.on{background:var(--accent-weak);color:var(--accent)}
+
 #toast{
   position:fixed;left:50%;z-index:60;bottom:calc(var(--safe-bottom) + 150px);transform:translate(-50%,20px);
   background:rgba(25,31,40,.92);color:#fff;padding:12px 20px;border-radius:24px;font-size:15px;
@@ -410,7 +458,7 @@ button.list-row:active{opacity:.6}
   <button class="tab" data-tab="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-4.5v-6h-5v6H5a1 1 0 0 1-1-1z"/></svg>홈</button>
   <button class="tab" data-tab="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>내역</button>
   <button class="tab" data-tab="fixed"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4" stroke-linecap="round"/></svg>고정지출</button>
-  <button class="tab" data-tab="goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>목표</button>
+  <button class="tab" data-tab="goal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="4.5"/><circle cx="12" cy="12" r="1" fill="currentColor"/></svg>특별지출</button>
   <button class="tab" data-tab="salary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V13M12 20V8M19 20V4"/></svg>급여</button>
 </nav>
 
@@ -418,7 +466,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '3.2.0';
+const APP_VERSION = '4.0.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -1130,6 +1178,221 @@ function lastImported(rows) {
   rows.forEach(r => { if (!last || r.date > last) last = r.date; });
   return last;
 }
+
+/* =====================================================================
+   4단계 (v4.0.0) — 여행·이벤트 / 반기 특별지출 한도 / 수입·안 쓴 돈
+   ===================================================================== */
+
+/* ---- 여행·이벤트 ----
+   이벤트 태그는 날짜만 보고 붙인다. 가져온 내역도, 여행이 끝난 뒤 늦게 들어온 것도 포함한다.
+   파일은 늦게 들어오는 게 정상이기 때문이다.
+   기간이 겹치면 나중에 만든 이벤트가 이긴다 (한 지출에 이벤트는 하나).
+   eventSource='manual' = 사용자가 그 건만 직접 붙이거나 뗀 것 → 다시 계산하지 않는다. */
+function eventForDate(events, ymd) {
+  const hit = (events || []).filter(e => inRange(ymd, e.start, e.end));
+  if (!hit.length) return null;
+  return hit.reduce((a, b) => (b.createdAt > a.createdAt ? b : a));
+}
+/** 내역 하나에 붙을 이벤트 id (직접 바꾼 건은 그대로) */
+function eventIdFor(t, events) {
+  if (t.eventSource === 'manual') return t.eventId || null;
+  const e = eventForDate(events, t.date);
+  return e ? e.id : null;
+}
+/** 이벤트를 만들거나 기간을 바꾸거나 지웠을 때 태그를 다시 계산한다. 바뀐 내역만 반환.
+ *  events에는 이미 반영된 목록(추가·수정된 것 포함, 지운 것 제외)을 넘긴다. */
+function retagEvents(txs, events, catMap, threshold, now) {
+  const out = [];
+  txs.forEach(t => {
+    if (t.eventSource === 'manual') return;
+    const want = eventIdFor(t, events);
+    if ((t.eventId || null) === want) return;
+    out.push({ ...recomputeKind({ ...t, eventId: want }, catMap, threshold), eventSource: 'auto', updatedAt: now });
+  });
+  return out;
+}
+/** 카테고리 비중 (도넛에는 양수만. 환급이 더 많은 카테고리는 따로 모은다) */
+function catBreakdown(list, categories) {
+  const byCat = {};
+  list.forEach(t => { byCat[t.categoryId] = (byCat[t.categoryId] || 0) + t.amount; });
+  const total = sumAmount(list);
+  const catRows = categories
+    .map(k => ({ cat: k, spent: byCat[k.id] || 0, share: total > 0 ? (byCat[k.id] || 0) / total : 0 }))
+    .filter(r => r.spent > 0)
+    .sort((a, b) => b.spent - a.spent || a.cat.order - b.cat.order);
+  const negRows = categories
+    .map(k => ({ cat: k, spent: byCat[k.id] || 0 }))
+    .filter(r => r.spent < 0)
+    .sort((a, b) => a.spent - b.spent);
+  return { total, catRows, negRows };
+}
+/** 이벤트 상세: 총액(환급 반영) · 하루 평균 · 카테고리 비중 */
+function eventStats(txs, ev, categories) {
+  const list = txs.filter(t => isCounted(t) && t.eventId === ev.id);
+  const b = catBreakdown(list, categories || []);
+  const days = diffDays(ev.start, ev.end) + 1;
+  const spend = sumAmount(list.filter(t => t.amount > 0));
+  const refund = sumAmount(list.filter(t => t.amount < 0));
+  return {
+    event: ev, days, count: list.length,
+    total: b.total, spend, refund,
+    avgDaily: days > 0 ? Math.round(b.total / days) : 0,
+    catRows: b.catRows, negRows: b.negRows,
+    rest: Math.max(0, (ev.estimate || 0) - b.total),
+  };
+}
+/** 이벤트 목록 (최근 시작일 순). 각 항목에 총액·건수를 붙인다 */
+function eventList(txs, events) {
+  return [...(events || [])]
+    .sort((a, b) => b.start.localeCompare(a.start))
+    .map(e => {
+      const list = txs.filter(t => isCounted(t) && t.eventId === e.id);
+      return { event: e, count: list.length, total: sumAmount(list) };
+    });
+}
+
+/* ---- 반기 특별지출 한도 ----
+   특별지출은 1년에 큰 건 몇 개가 전부를 설명한다. 페이스·하루 사용 가능 금액은 의미가 없어서 쓰지 않는다.
+   대신 잔액 · 건수와 건당 평균 · 예정(이벤트 예상액) · 큰 건 · 주기별 분포를 본다. */
+/** 반기 안에 걸친 이벤트의 남은 예상액. 실제 지출이 들어오면 그만큼 물러난다 */
+function plannedSpecial(txs, events, h) {
+  const items = (events || [])
+    .filter(e => (e.estimate || 0) > 0 && e.start <= h.end && e.end >= h.start)
+    .map(e => {
+      const actual = sumAmount(txs.filter(t => isSpecial(t) && t.eventId === e.id && inRange(t.date, h.start, h.end)));
+      return { event: e, actual, rest: Math.max(0, e.estimate - actual) };
+    })
+    .filter(x => x.rest > 0)
+    .sort((a, b) => a.event.start.localeCompare(b.event.start));
+  return { items, total: items.reduce((s, x) => s + x.rest, 0) };
+}
+/** 반기 안 주기별 특별지출 (막대 분포용) */
+function monthlySpecial(list, h) {
+  const out = [];
+  let c = cycleOf(h.start);
+  while (c.start <= h.end) {
+    const cc = c;
+    out.push({ cycle: cc, amount: sumAmount(list.filter(t => inRange(t.date, cc.start, cc.end))) });
+    c = nextCycle(c);
+  }
+  return out;
+}
+/** 반기 특별지출 현황 전부. limit이 없으면 합계와 분포만 낸다 */
+function halfStats(txs, events, categories, ref, limit) {
+  const h = halfOf(ref);
+  const list = txs.filter(t => isSpecial(t) && inRange(t.date, h.start, h.end));
+  const spent = sumAmount(list);
+  const count = list.length;
+  const avgEach = count > 0 && spent > 0 ? Math.round(spent / count) : 0;
+  const planned = plannedSpecial(txs, events, h);
+  const projected = spent + planned.total;
+  const ph = halfOf(addDays(h.start, -1));
+  const elapsed = diffDays(h.start, ref) + 1;
+  const pSameEnd = [addDays(ph.start, elapsed - 1), ph.end].sort()[0];
+  const prevSame = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, pSameEnd)));
+  const prevTotal = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, ph.end)));
+  const pos = list.filter(t => t.amount > 0);
+  const gross = sumAmount(pos);
+  const top = [...pos].sort((a, b) => b.amount - a.amount).slice(0, 3);
+  const topSum = sumAmount(top);
+  return {
+    half: h, prevHalf: ph, elapsed, limit: limit || null,
+    spent, count, avgEach,
+    left: limit ? limit - spent : null,
+    pct: limit ? Math.round(spent / limit * 100) : null,
+    planned, projected,
+    projectedLeft: limit ? limit - projected : null,
+    projectedPct: limit ? Math.round(projected / limit * 100) : null,
+    // 남은 돈으로 평균 규모 몇 건을 더 감당할 수 있는지 (페이스 대신 쓰는 지표)
+    leftCount: limit && avgEach > 0 ? Math.floor(Math.max(0, limit - projected) / avgEach) : null,
+    gross, top, topShare: gross > 0 ? topSum / gross : 0,
+    months: monthlySpecial(list, h),
+    prevSame, prevTotal, change: changeRate(spent, prevSame),
+    level: limit ? (spent >= limit ? 'over' : projected >= limit ? 'warn' : 'calm') : 'calm',
+  };
+}
+/** 반기를 앞뒤로 옮긴다. 이번 반기로 돌아오면 null */
+function shiftHalfRef(ref, dir, today) {
+  const h = halfOf(ref);
+  const n = dir < 0 ? halfOf(addDays(h.start, -1)) : halfOf(addDays(h.end, 1));
+  if (inRange(today, n.start, n.end)) return null;
+  return n.end;
+}
+/** 특별지출 내역이 있는 가장 이른 반기 (◀ 를 어디까지 누를 수 있는지) */
+function earliestHalf(txs, today) {
+  const d = txs.filter(isSpecial).map(t => t.date).sort()[0];
+  return halfOf(d || today);
+}
+
+/* ---- 수입 · 안 쓴 돈 · 저축률 ----
+   계좌 잔고는 알 수 없다 (가져오기에서 내계좌이체·저축·투자를 전부 뺐다).
+   그래서 '저축'이 아니라 '안 쓴 돈'으로 부른다. = 수입 − (생활비 + 그 주기 특별지출) */
+/** 그 주기 수입. 주기에 기록이 없으면 기본 급여를 소급 적용하고 estimated=true를 붙인다 */
+function cycleIncome(incomes, cycleId, baseSalary) {
+  const rec = (incomes || {})[cycleId];
+  const has = !!(rec && rec.salary != null);
+  const salary = has ? rec.salary : (baseSalary || 0);
+  const extras = (rec && rec.extras) || [];
+  const extra = extras.reduce((s, x) => s + (x.amount || 0), 0);
+  return { cycleId, salary, extras, extra, total: salary + extra, estimated: !has };
+}
+/** 한 주기의 안 쓴 돈. 특별지출은 그 주기에 실제로 발생한 것만 뺀다 */
+function cycleSaving(txs, incomes, cycleId, baseSalary) {
+  const [y, m] = cycleId.split('-').map(Number);
+  const c = cycleOf(`${y}-${pad(m)}-${pad(PAYDAY)}`);
+  const income = cycleIncome(incomes, cycleId, baseSalary);
+  const living = sumAmount(txs.filter(t => isLiving(t) && inRange(t.date, c.start, c.end)));
+  const special = sumAmount(txs.filter(t => isSpecial(t) && inRange(t.date, c.start, c.end)));
+  const spent = living + special;
+  const saved = income.total - spent;
+  return { cycle: c, income, living, special, spent, saved, rate: income.total > 0 ? saved / income.total : null };
+}
+/** 이미 끝난 주기 최근 n개의 안 쓴 돈 평균. sinceYMD보다 앞으로는 가지 않는다 */
+function savingTrend(txs, incomes, today, baseSalary, sinceYMD, n = 3) {
+  const floor = sinceYMD || txs.map(t => t.date).sort()[0] || today;
+  const out = [];
+  let c = prevCycle(cycleOf(today));
+  while (out.length < n && c.end >= floor) {
+    const r = cycleSaving(txs, incomes, c.id, baseSalary);
+    if (r.income.total > 0) out.push(r);
+    c = prevCycle(c);
+  }
+  if (!out.length) return null;
+  const avgSaved = Math.round(out.reduce((s, r) => s + r.saved, 0) / out.length);
+  const avgIncome = Math.round(out.reduce((s, r) => s + r.income.total, 0) / out.length);
+  const avgSpent = Math.round(out.reduce((s, r) => s + r.spent, 0) / out.length);
+  return {
+    count: out.length, cycles: out, avgSaved, avgIncome, avgSpent,
+    rate: avgIncome > 0 ? avgSaved / avgIncome : null, yearly: avgSaved * 12,
+  };
+}
+
+/* ---- 예산 짜기 ----
+   목표 저축률이 '쓸 수 있는 돈'을 먼저 정하고, 그 안에서 생활비와 특별지출을 나눈다.
+   생활비를 올리면 특별지출 한도가 줄어든다. */
+/** 목표율과 생활비 예산에서 반기 특별지출 한도를 역산 (만원 단위) */
+function suggestHalfLimit(income, goalRate, living) {
+  const monthly = Math.round(income * (1 - goalRate)) - living;
+  return Math.max(0, roundTo(monthly * 6, 10000));
+}
+/** 예산 한 벌의 결과: 남는 돈, 이 예산대로 갔을 때 안 쓰는 돈과 비율 */
+function budgetPlan(income, goalRate, living, halfLimit) {
+  const specialMonthly = Math.round((halfLimit || 0) / 6);
+  const spendable = Math.round(income * (1 - goalRate));
+  const planned = living + specialMonthly;
+  const saved = income - planned;
+  return {
+    income, goalRate, living, halfLimit: halfLimit || 0, specialMonthly, spendable, planned,
+    rest: spendable - planned, ok: spendable - planned >= 0,
+    saved, rate: income > 0 ? saved / income : null, yearly: saved * 12,
+  };
+}
+/** 생활비 예산 제안값 두 개를 나란히 (목표 역산 / 과거 실적) */
+function budgetChoices(income, goalRate, halfLimit, suggestion) {
+  const fromGoal = Math.max(0, roundTo(Math.round(income * (1 - goalRate)) - Math.round((halfLimit || 0) / 6), 10000));
+  return { fromGoal, fromHistory: suggestion ? suggestion.amount : null };
+}
+const pctText = r => (r === null || r === undefined ? '-' : `${(Math.round(r * 1000) / 10).toFixed(1)}%`);
 /*LOGIC-END*/
 
 /* =====================================================================
@@ -1138,7 +1401,7 @@ function lastImported(rows) {
    - 기존 단계는 절대 수정하지 않는다 → 저장된 데이터가 그대로 유지됨
    ===================================================================== */
 const DB_NAME = 'gagyebu';
-const DB_VERSION = 5;
+const DB_VERSION = 6;
 const FALLBACK_NAME = '기타';
 const MIGRATIONS = {
   1(db) {
@@ -1194,6 +1457,15 @@ const MIGRATIONS = {
     ir.createIndex('status', 'status');
     db.createObjectStore('importBatches', { keyPath: 'id' });
     db.createObjectStore('merchantRules', { keyPath: 'key' });
+  },
+  // v4.0.0: 여행·이벤트, 반기 특별지출 한도, 주기별 수입.
+  //         기존 데이터는 건드리지 않고 저장소만 추가한다.
+  //         transactions의 eventSource는 없으면 'auto'로 본다 (내역을 훑지 않는다)
+  6(db) {
+    const ev = db.createObjectStore('events', { keyPath: 'id' });
+    ev.createIndex('start', 'start');
+    db.createObjectStore('halfLimits', { keyPath: 'halfId' });
+    db.createObjectStore('cycleIncomes', { keyPath: 'cycleId' });
   },
 };
 let db;
@@ -1286,6 +1558,26 @@ function dbResolveRow(row, tx, rule) {
     t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
   });
 }
+/** 이벤트 저장·삭제 + 태그가 바뀐 내역을 한 트랜잭션으로 (v4.0.0) */
+function dbSaveEvent(ev, changed, removeId) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['events', 'transactions'], 'readwrite');
+    if (removeId) t.objectStore('events').delete(removeId);
+    if (ev) t.objectStore('events').put(ev);
+    changed.forEach(x => t.objectStore('transactions').put(x));
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
+/** 예산 짜기: 주기 생활비 예산 + 반기 특별지출 한도 + 주기 수입을 한 번에 (v4.0.0) */
+function dbSavePlan(budget, limit, income) {
+  return new Promise((res, rej) => {
+    const t = db.transaction(['cycleBudgets', 'halfLimits', 'cycleIncomes'], 'readwrite');
+    if (budget) t.objectStore('cycleBudgets').put(budget);
+    if (limit) t.objectStore('halfLimits').put(limit);
+    if (income) t.objectStore('cycleIncomes').put(income);
+    t.oncomplete = res; t.onerror = () => rej(t.error); t.onabort = () => rej(t.error);
+  });
+}
 const uid = () => (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36) + Math.random().toString(36).slice(2));
 
 const DEFAULT_CATEGORIES = [
@@ -1306,7 +1598,11 @@ const state = {
   excludeMethods: [], chargeNames: BS_DEFAULT_CHARGE.slice(), seenMethods: [],
   tab: 'home', filterCat: 'all', query: '', homeCat: null, homeRef: null,
   cycleFilter: 'all', selMode: false, sel: [], importEvery: 7,
+  // v4.0.0
+  events: [], halfLimits: {}, incomes: {},
+  baseSalary: 0, savingsGoal: 0.4, halfRef: null, halfCat: null,
 };
+const SAVE_GOALS = [0.4, 0.45, 0.5];
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const todayYMD = () => toYMD(new Date());
@@ -1354,6 +1650,26 @@ function budgetState(today = todayYMD()) {
 function budgetOfCycle(cycleId) {
   const r = state.budgets[cycleId];
   return r ? r.amount : null;
+}
+/* ---- v4.0.0 접근자 ---- */
+const halfLimitOf = halfId => { const r = state.halfLimits[halfId]; return r ? r.amount : null; };
+const incomeOf = cycleId => cycleIncome(state.incomes, cycleId, state.baseSalary);
+const eventById = id => state.events.find(e => e.id === id) || null;
+/** 새로 만드는·가져오는 내역에 이벤트 태그를 붙인다 */
+const withEvent = t => ({ ...t, eventId: eventIdFor(t, state.events), eventSource: t.eventSource || 'auto' });
+async function saveHalfLimit(halfId, amount) {
+  const rec = { halfId, amount, confirmedAt: Date.now() };
+  await dbPut('halfLimits', rec);
+  state.halfLimits[halfId] = rec;
+}
+async function saveIncome(cycleId, salary, extras) {
+  const rec = { cycleId, salary, extras: extras || [], editedAt: Date.now() };
+  await dbPut('cycleIncomes', rec);
+  state.incomes[cycleId] = rec;
+  if (!state.baseSalary && salary > 0) {
+    state.baseSalary = salary;
+    await dbPut('meta', { key: 'baseSalary', value: salary });
+  }
 }
 async function saveBudget(cycleId, amount, confirmed, suggested) {
   const rec = { cycleId, amount, suggested: suggested ?? null, confirmedAt: confirmed ? Date.now() : null };
@@ -1449,7 +1765,7 @@ function budgetCardHTML(b) {
     return `<div class="budget-card">
       <div class="t">이번 주기 생활비 예산을 정해 주세요</div>
       <div class="why">주기 기록이 한 번 끝까지 쌓이면 다음 주기부터 자동으로 제안해 드려요 (최대 최근 3개 주기 기준)</div>
-      <div class="btns"><button class="btn-fill" data-budget-input>예산 입력</button></div></div>`;
+      <div class="btns"><button class="btn-ghost" data-budget-plan>예산 짜기</button><button class="btn-fill" data-budget-input>예산 입력</button></div></div>`;
   }
   if (!b.provisional) return '';
   const s = b.suggestion;
@@ -1457,7 +1773,8 @@ function budgetCardHTML(b) {
     <div class="t">이번 주기 생활비 예산 제안</div>
     <div class="amt num">${formatWon(b.amount)}원</div>
     <div class="why">최근 ${s.count}개 주기 생활비 중앙값 ${formatMan(s.median)}원 기준${b.amount !== s.amount ? ` · 제안값 ${formatMan(s.amount)}원에서 줄임` : ''}</div>
-    <div class="btns"><button class="btn-ghost num" data-budget-minus>−5%</button><button class="btn-fill" data-budget-confirm>확정</button></div></div>`;
+    <div class="btns"><button class="btn-ghost num" data-budget-minus>−5%</button><button class="btn-fill" data-budget-confirm>확정</button></div>
+    <div class="btns" style="margin-top:8px"><button class="btn-ghost" data-budget-plan>급여·저축률로 예산 짜기</button></div></div>`;
 }
 
 /* ---- 누적 지출 선 그래프 ---- */
@@ -1551,6 +1868,7 @@ function renderHome() {
   const first = earliestCycle(state.txs, today);
   const canPrev = c.start > first.start;
   const canNext = !isCurrent;
+  const hl = halfLimitOf(s.half.id);
 
   let delta = '지난 주기 기록이 없어요';
   if (s.change !== null) {
@@ -1602,7 +1920,9 @@ function renderHome() {
     ${isCurrent ? budgetCardHTML(bNow) : ''}
     ${gauge}
     <div class="stats two">
-      <div class="stat"><div class="k">특별지출 · ${s.half.label}</div><div class="v num">${formatWon(s.special)}원</div><div class="k2 num">${shortDate(s.half.start)} – ${shortDate(s.half.end)}</div></div>
+      <div class="stat"><div class="k">특별지출 · ${s.half.label}</div>
+        <div class="v num ${hl && s.special >= hl ? 'neg' : ''}">${formatWon(s.special)}원</div>
+        <div class="k2 num">${hl ? `한도 ${formatMan(hl)} · ${Math.round(s.special / hl * 100)}%` : `${shortDate(s.half.start)} – ${shortDate(s.half.end)}`}</div></div>
       ${isCurrent
         ? `<div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div><div class="k2">생활비 + 특별지출</div></div>`
         : `<div class="stat"><div class="k">하루 평균</div><div class="v num">${formatWon(s.avgDaily)}원</div><div class="k2">생활비 ${s.elapsed}일 기준</div></div>`}
@@ -1644,6 +1964,8 @@ function renderHome() {
   const v = $('#view');
   const inputBtn = v.querySelector('[data-budget-input]');
   if (inputBtn) inputBtn.onclick = () => openBudgetInput(bNow);
+  const planBtn = v.querySelector('[data-budget-plan]');
+  if (planBtn) planBtn.onclick = () => openBudgetPlanner();
   const minus = v.querySelector('[data-budget-minus]');
   if (minus) minus.onclick = async () => {
     await saveBudget(bNow.cycle.id, minus5(bNow.amount), false, bNow.suggestion.amount);
@@ -2023,13 +2345,491 @@ function openFixedEditor(fx) {
    화면: 준비 중 (4~5단계)
    ===================================================================== */
 const PLACEHOLDERS = {
-  goal: ['🎯', '목표 · 여행', '4단계에서 만들어요'],
   salary: ['💰', '급여', '5단계에서 만들어요'],
 };
 function renderPlaceholder(tab) {
   const [e, t, d] = PLACEHOLDERS[tab];
   $('#view').innerHTML = `<div class="topbar"><h1>${t}</h1></div>
     <div class="placeholder"><div class="big">${e}</div><b>준비 중이에요</b>${d}</div>`;
+}
+
+/* =====================================================================
+   화면: 특별지출 (v4.0.0)
+   반기 한도 · 여행/이벤트 · 안 쓴 돈
+   페이스와 하루 사용 가능 금액은 쓰지 않는다. 특별지출은 하루씩 쓰는 돈이 아니다.
+   ===================================================================== */
+function halfNavHTML(h, canPrev, canNext) {
+  return `<span class="cyc-nav">
+    <button class="cyc-btn" data-half="-1" ${canPrev ? '' : 'disabled'} aria-label="이전 반기">${ICON.back}</button>
+    <span class="cyc-name">${h.label}</span>
+    <button class="cyc-btn" data-half="1" ${canNext ? '' : 'disabled'} aria-label="다음 반기">${ICON.fwd}</button>
+  </span>`;
+}
+
+/** 주기별 막대 분포 */
+function monthBarsHTML(months, todayCycleId) {
+  const max = Math.max(1, ...months.map(m => m.amount));
+  return `<div class="mbars">${months.map(m => {
+    const h = Math.max(3, Math.round(m.amount / max * 64));
+    const cls = ['mb', m.amount <= 0 && 'zero', m.cycle.id === todayCycleId && 'now'].filter(Boolean).join(' ');
+    return `<div class="${cls}"><small class="num">${m.amount > 0 ? formatMan(m.amount) : ''}</small><i style="height:${h}px"></i><span class="num">${m.cycle.name}</span></div>`;
+  }).join('')}</div>`;
+}
+
+function renderSpecial() {
+  const today = todayYMD();
+  const ref = state.halfRef || today;
+  const isCurrent = !state.halfRef;
+  const h = halfOf(ref);
+  const limit = halfLimitOf(h.id);
+  const s = halfStats(state.txs, state.events, state.cats, ref, limit);
+  const first = earliestHalf(state.txs, today);
+  const evs = eventList(state.txs, state.events);
+  const trend = savingTrend(state.txs, state.incomes, today, state.baseSalary, state.installYMD);
+  const inc = incomeOf(cycleOf(today).id);
+
+  // ---- 반기 한도 카드
+  const barPct = limit ? Math.min(100, Math.round(s.spent / limit * 100)) : 0;
+  const planPct = limit ? Math.min(100, Math.round(s.projected / limit * 100)) : 0;
+  const gauge = limit
+    ? `<section class="section st-${s.level}">
+        <div class="gauge-head">${halfNavHTML(h, h.start > first.start, !isCurrent)}<span class="num">${s.pct}%</span></div>
+        <div class="gauge-amt num">${formatWon(s.spent)}<small>원</small></div>
+        <div class="gauge-of num">한도 ${formatWon(limit)}원 · ${shortDate(h.start)} – ${shortDate(h.end)}</div>
+        <div class="hl-bar">${s.planned.total ? `<u style="left:${barPct}%;width:${Math.max(0, planPct - barPct)}%"></u>` : ''}<i style="width:${barPct}%"></i></div>
+        <div class="hl-left">남은 <b class="num">${formatWon(Math.max(0, s.left))}원</b>${s.left < 0 ? ` <span class="num" style="color:var(--danger)">(${formatWon(s.left)}원 초과)</span>` : ''}</div>
+        ${s.planned.total ? `<div class="plan">
+          <div class="plan-row head"><span class="k">예정 포함</span><span class="v num">${formatWon(s.projected)}원</span></div>
+          <div class="plan-row"><span class="k">남는 돈</span><span class="v num" style="color:${s.projectedLeft < 0 ? 'var(--danger)' : 'var(--text)'}">${formatWon(s.projectedLeft)}원</span></div>
+          <div class="plan-div"></div>
+          ${s.planned.items.map(x => `<div class="plan-row sub"><span class="k">${esc(x.event.name)} ${shortDate(x.event.start)}–${shortDate(x.event.end)}</span><span class="v num">예상 ${formatWon(x.rest)}원</span></div>`).join('')}
+        </div>` : ''}
+        <div class="delta-line">${s.count ? `${s.count}건 · 건당 평균 <span class="num">${formatWon(s.avgEach)}원</span>${s.leftCount !== null ? `<br>남은 돈으로 평균 규모 <b class="num">${s.leftCount}건</b> 정도` : ''}` : '이번 반기에 특별지출이 없어요'}</div>
+        ${s.change !== null ? `<div class="delta-line">지난 반기 ${isCurrent ? '같은 시점' : '전체'}보다 ${s.spent - s.prevSame > 0 ? '▲' : '▼'}${Math.abs(s.change)}% <span class="num">(${s.spent - s.prevSame > 0 ? '+' : '−'}${formatWon(Math.abs(s.spent - s.prevSame))}원)</span></div>` : ''}
+      </section>`
+    : `<section class="section">
+        <div class="gauge-head">${halfNavHTML(h, h.start > first.start, !isCurrent)}</div>
+        <div class="gauge-amt num">${formatWon(s.spent)}<small>원</small></div>
+        <div class="gauge-of num">${s.count}건 · ${shortDate(h.start)} – ${shortDate(h.end)}</div>
+        <div class="delta-line">한도를 정하면 남은 금액과 예정까지 같이 보여드려요.
+          <br><button class="link-btn" data-open-plan>예산 짜기</button></div>
+      </section>`;
+
+  // ---- 큰 건
+  const bigSec = s.top.length ? `<section class="section">
+      <h2 class="section-title">큰 건${s.topShare > 0 ? ` · 상위 ${s.top.length}건이 지출의 ${Math.round(s.topShare * 100)}%` : ''}</h2>
+      ${s.top.map(t => {
+        const c = catById(t.categoryId);
+        const ev = t.eventId ? eventById(t.eventId) : null;
+        return `<div class="big-row">
+          <div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>
+          <div class="grow"><div class="t">${esc(t.merchant || c.name)}</div>
+            <div class="s num">${shortDate(t.date)} · ${esc(ev ? ev.name : c.name)}</div></div>
+          <div class="a num">${formatWon(t.amount)}원</div></div>`;
+      }).join('')}
+    </section>` : '';
+
+  // ---- 주기별 분포
+  const monthSec = `<section class="section">
+      <h2 class="section-title">주기별 분포</h2>
+      ${monthBarsHTML(s.months, cycleOf(today).id)}
+    </section>`;
+
+  // ---- 이벤트
+  const evSec = `<section class="section">
+      <div class="sec-head"><h2 class="section-title">여행 · 이벤트</h2><button class="link-btn" data-ev-add>추가</button></div>
+      ${evs.length ? evs.map(x => {
+        const e = x.event;
+        const rest = Math.max(0, (e.estimate || 0) - x.total);
+        return `<div class="tx" data-ev="${e.id}">
+          <div class="cat-ico" style="background:var(--accent-weak)">🧳</div>
+          <div class="tx-main"><div class="tx-title">${esc(e.name)}</div>
+            <div class="tx-sub num">${shortDate(e.start)} – ${shortDate(e.end)} · ${x.count}건</div></div>
+          <div class="ev-right"><div class="tx-amt num">${formatWon(x.total)}원</div>
+            ${rest > 0 ? `<div class="ev-st plan num">예상 ${formatMan(e.estimate)}</div>` : e.estimate ? `<div class="ev-st num">예상 ${formatMan(e.estimate)}</div>` : ''}</div>
+        </div>`;
+      }).join('') : `<div class="empty">여행이나 이벤트를 만들면 그 기간 지출이 자동으로 묶여요<br>묶인 지출은 항상 특별지출로 잡혀요</div>`}
+    </section>`;
+
+  // ---- 안 쓴 돈
+  const savedSec = (() => {
+    if (!inc.total) {
+      return `<section class="section">
+        <h2 class="section-title">안 쓴 돈</h2>
+        <div class="empty">급여를 넣으면 저축률과 연간 예상을 보여드려요</div>
+        <button class="primary" data-open-plan>예산 짜기</button>
+      </section>`;
+    }
+    const living = budgetOfCycle(cycleOf(today).id);
+    const plan = living !== null ? budgetPlan(inc.total, state.savingsGoal, living, limit || 0) : null;
+    return `<section class="section">
+      <h2 class="section-title">안 쓴 돈</h2>
+      ${plan ? `<div class="plan">
+        <div class="plan-row"><span class="k">수입${inc.estimated ? '<span class="est">추정</span>' : ''}</span><span class="v num">${formatWon(inc.total)}원</span></div>
+        <div class="plan-row sub"><span class="k">− 생활비 예산</span><span class="v num">${formatWon(plan.living)}원</span></div>
+        <div class="plan-row sub"><span class="k">− 특별지출 ${formatMan(plan.halfLimit)} ÷ 6</span><span class="v num">${formatWon(plan.specialMonthly)}원</span></div>
+        <div class="plan-div"></div>
+        <div class="plan-row head"><span class="k">매달 안 쓰는 돈</span><span class="v num">${formatWon(plan.saved)}원</span></div>
+        <div class="plan-row ${plan.ok ? 'good' : 'bad'}"><span class="k">저축률 (목표 ${pctText(state.savingsGoal)})</span><span class="v num">${pctText(plan.rate)}</span></div>
+        <div class="plan-row sub"><span class="k">연</span><span class="v num">${formatWon(roundTo(plan.yearly, 1000))}원</span></div>
+      </div>` : `<div class="hint" style="margin-top:0">생활비 예산을 정하면 계획 저축률을 계산해 드려요</div>`}
+      ${trend ? `<div class="plan">
+        <div class="plan-row head"><span class="k">지금 속도</span><span class="v num">${pctText(trend.rate)}</span></div>
+        <div class="plan-row sub"><span class="k">최근 ${trend.count}개 주기 평균 안 쓴 돈</span><span class="v num">${formatWon(trend.avgSaved)}원</span></div>
+        <div class="plan-row sub"><span class="k">이 속도면 연</span><span class="v num">${formatWon(roundTo(trend.yearly, 1000))}원</span></div>
+        ${plan ? `<div class="plan-div"></div>
+        <div class="plan-row ${trend.rate >= plan.rate ? 'good' : 'bad'}"><span class="k">계획 대비</span><span class="v num">${trend.rate >= plan.rate ? '+' : '−'}${(Math.abs(trend.rate - plan.rate) * 100).toFixed(1)}%p</span></div>` : ''}
+      </div>` : '<div class="hint">끝난 주기가 쌓이면 실제 속도와 비교해 드려요</div>'}
+      <div class="hint">계좌 잔고는 앱이 알 수 없어요. 여기 숫자는 <b>수입에서 쓴 돈을 뺀 금액</b>이에요.</div>
+      <button class="secondary" data-open-plan>예산 짜기</button>
+    </section>`;
+  })();
+
+  $('#view').innerHTML = `
+    <div class="topbar"><h1>특별지출</h1><button class="text-btn" data-open-plan>예산 짜기</button></div>
+    ${gauge}${bigSec}${monthSec}${evSec}${savedSec}
+    ${isCurrent ? '' : '<div class="hint" style="text-align:center;margin:0 24px">지난 반기를 보고 있어요</div>'}`;
+
+  const el = $('#view');
+  el.querySelectorAll('[data-half]').forEach(b => b.onclick = () => {
+    if (b.disabled) return;
+    state.halfRef = shiftHalfRef(ref, Number(b.dataset.half), today);
+    renderSpecial(); el.scrollTop = 0;
+  });
+  el.querySelectorAll('[data-open-plan]').forEach(b => b.onclick = () => openBudgetPlanner());
+  el.querySelectorAll('[data-ev-add]').forEach(b => b.onclick = () => openEventEditor());
+  el.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => openEventDetail(eventById(b.dataset.ev)));
+}
+
+/* ---- 이벤트 상세 ---- */
+function openEventDetail(ev) {
+  if (!ev) return;
+  const st = eventStats(state.txs, ev, state.cats);
+  const list = state.txs.filter(t => isCounted(t) && t.eventId === ev.id)
+    .sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
+  const s = openSheet(`
+    <div class="sheet-head">
+      <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">${esc(ev.name)}</div>
+      <button class="text-btn" id="ev-edit">수정</button>
+    </div>
+    <div class="money-big num">${formatWon(st.total)}<small>원</small></div>
+    <div class="gauge-of num" style="text-align:center">${shortDate(ev.start)} – ${shortDate(ev.end)} · ${st.days}일 · ${st.count}건</div>
+    <div class="plan">
+      <div class="plan-row"><span class="k">하루 평균</span><span class="v num">${formatWon(st.avgDaily)}원</span></div>
+      ${st.refund ? `<div class="plan-row"><span class="k">받은 돈 (정산)</span><span class="v num" style="color:var(--accent)">${formatWon(st.refund)}원</span></div>
+      <div class="plan-row sub"><span class="k">쓴 돈</span><span class="v num">${formatWon(st.spend)}원</span></div>` : ''}
+      ${ev.estimate ? `<div class="plan-div"></div>
+      <div class="plan-row"><span class="k">예상</span><span class="v num">${formatWon(ev.estimate)}원</span></div>
+      <div class="plan-row sub"><span class="k">${st.rest > 0 ? '아직 안 들어온 예상액' : '예상 대비'}</span><span class="v num">${st.rest > 0 ? formatWon(st.rest) + '원' : formatWon(st.total - ev.estimate) + '원'}</span></div>` : ''}
+    </div>
+    ${st.catRows.length ? `<h2 class="section-title" style="margin:16px 0 4px">카테고리 비중</h2>
+      ${st.catRows.map(x => `<div class="cat-row">
+        <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
+        <div class="cat-main">
+          <div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num">${formatWon(x.spent)}원</span></div>
+          <div class="cat-bar"><i style="width:${Math.max(2, Math.round(x.share * 100))}%;background:${x.cat.color}"></i></div>
+          <div class="cat-meta"><span class="cat-pct num" style="color:${x.cat.color}">${Math.round(x.share * 100)}%</span></div>
+        </div></div>`).join('')}
+      ${st.negRows.map(x => `<div class="cat-row">
+        <div class="cat-ico" style="${icoStyle(x.cat)}">${esc(x.cat.emoji)}</div>
+        <div class="cat-main"><div class="cat-line"><span class="cat-name">${esc(x.cat.name)}</span><span class="cat-amt num" style="color:var(--accent)">${formatWon(x.spent)}원</span></div>
+          <div class="cat-meta"><span>받은 돈이 더 많아요</span></div></div></div>`).join('')}` : ''}
+    ${list.length ? `<h2 class="section-title" style="margin:16px 0 4px">묶인 내역 ${list.length}건</h2>
+      ${list.slice(0, 30).map(t => txRowHTML(t, false, false)).join('')}
+      ${list.length > 30 ? `<div class="pend-count">최근 30건만 보여요</div>` : ''}`
+    : '<div class="empty">아직 묶인 내역이 없어요<br>그 기간 지출이 들어오면 자동으로 묶여요</div>'}`, { full: true });
+  $('#ev-edit', s.el).onclick = () => { s.close(); setTimeout(() => openEventEditor(ev), 120); };
+  s.el.querySelectorAll('[data-tx]').forEach(r => r.onclick = () => {
+    const t = state.txs.find(x => x.id === r.dataset.tx);
+    s.close(); setTimeout(() => openEntry(t), 120);
+  });
+}
+
+/* ---- 이벤트 추가 / 수정 ---- */
+function openEventEditor(ev) {
+  const editing = !!ev;
+  const today = todayYMD();
+  const f = {
+    name: editing ? ev.name : '',
+    start: editing ? ev.start : today,
+    end: editing ? ev.end : today,
+    estimate: editing ? String(ev.estimate || '') : '',
+  };
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
+  const s = openSheet(`
+    <div class="sheet-head">
+      <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">${editing ? '이벤트 수정' : '여행 · 이벤트 추가'}</div>
+      ${editing ? '<button class="text-btn danger" id="v-del">삭제</button>' : '<span style="width:44px"></span>'}
+    </div>
+    <div class="entry-body">
+      <div class="field"><label>이름</label><input id="v-name" value="${esc(f.name)}" placeholder="예: 제주 여행" maxlength="20" autocomplete="off"></div>
+      <div class="field"><label>시작일</label><input type="date" id="v-start" value="${f.start}"></div>
+      <div class="field"><label>종료일</label><input type="date" id="v-end" value="${f.end}"></div>
+      <div class="field"><label>예상 금액 (선택)</label></div>
+      <div class="amount-display num" id="v-amt"></div>
+      <div class="hint" style="text-align:center;margin:0 0 6px">넣어 두면 반기 한도에서 미리 빠져요. 실제 지출이 들어오면 그만큼 물러나요.</div>
+      <div class="keypad">${keys.map(k => `<button class="key num" data-key="${k}">${k === 'back' ? ICON.del : k}</button>`).join('')}</div>
+      <button class="primary" id="v-save">저장</button>
+      <div class="hint">기간 안의 지출은 자동으로 이 이벤트에 묶이고 <b>항상 특별지출</b>로 잡혀요. 기간이 겹치면 나중에 만든 이벤트가 이겨요.</div>
+    </div>`, { full: true });
+  const el = s.el, amtEl = $('#v-amt', el), saveBtn = $('#v-save', el);
+
+  const paint = () => {
+    const n = Number(f.estimate || 0);
+    amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
+    amtEl.classList.toggle('zero', !n);
+    const bad = f.end < f.start;
+    saveBtn.disabled = !f.name.trim() || bad;
+    saveBtn.textContent = !f.name.trim() ? '이름을 입력하세요' : bad ? '종료일이 시작일보다 앞이에요' : '저장';
+  };
+  bindKeypad(el, k => { const nx = keypadInput(f.estimate, k); if (nx !== f.estimate) { f.estimate = nx; paint(); } });
+  $('#v-name', el).oninput = e => { f.name = e.target.value; paint(); };
+  $('#v-start', el).onchange = e => { if (e.target.value) { f.start = e.target.value; if (f.end < f.start) { f.end = f.start; $('#v-end', el).value = f.end; } paint(); } };
+  $('#v-end', el).onchange = e => { if (e.target.value) { f.end = e.target.value; paint(); } };
+
+  let saving = false;
+  saveBtn.onclick = async () => {
+    if (saveBtn.disabled || saving) return;
+    saving = true;
+    try {
+      const now = Date.now();
+      const rec = editing
+        ? { ...ev, name: f.name.trim(), start: f.start, end: f.end, estimate: Number(f.estimate || 0), updatedAt: now }
+        : { id: uid(), name: f.name.trim(), start: f.start, end: f.end, estimate: Number(f.estimate || 0), createdAt: now, updatedAt: now };
+      const next = editing ? state.events.map(e => (e.id === rec.id ? rec : e)) : [...state.events, rec];
+      const changed = retagEvents(state.txs, next, catMap(), state.threshold, now);
+      await dbSaveEvent(rec, changed);
+      state.events = next;
+      applyTxChanges(changed);
+      s.close(); render();
+      toast(changed.length ? `${editing ? '수정했어요' : '만들었어요'} · 내역 ${changed.length}건을 묶었어요` : (editing ? '수정했어요' : '만들었어요'));
+    } catch (e) { toast('저장하지 못했어요'); }
+    finally { saving = false; }
+  };
+  if (editing) {
+    $('#v-del', el).onclick = async () => {
+      if (!confirm(`'${ev.name}'을(를) 삭제할까요?\n묶여 있던 내역은 남고, 이벤트 태그만 풀려요.`)) return;
+      const now = Date.now();
+      const next = state.events.filter(e => e.id !== ev.id);
+      const changed = retagEvents(state.txs, next, catMap(), state.threshold, now);
+      try { await dbSaveEvent(null, changed, ev.id); } catch (e2) { toast('삭제하지 못했어요'); return; }
+      state.events = next;
+      applyTxChanges(changed);
+      s.close(); render(); toast(`삭제했어요 · 내역 ${changed.length}건의 태그를 풀었어요`);
+    };
+  }
+  paint();
+}
+/** 바뀐 내역을 state에 반영 */
+function applyTxChanges(changed) {
+  if (!changed.length) return;
+  const byId = Object.fromEntries(changed.map(t => [t.id, t]));
+  state.txs = state.txs.map(t => byId[t.id] || t);
+}
+
+/* =====================================================================
+   예산 짜기 (v4.0.0)
+   목표 저축률이 '쓸 수 있는 돈'을 정하고, 그 안에서 생활비와 특별지출을 나눈다.
+   생활비를 조절하면 특별지출 반기 한도가 따라 움직인다.
+   ===================================================================== */
+const LIVING_STEP = 50000;
+function openBudgetPlanner() {
+  const today = todayYMD();
+  const c = cycleOf(today), h = halfOf(today);
+  const inc0 = incomeOf(c.id);
+  const bs = budgetState(today);
+  const f = {
+    salary: inc0.salary || 0,
+    extras: (inc0.extras || []).map(x => ({ ...x })),
+    goal: state.savingsGoal,
+    living: bs.amount || 0,
+    limit: halfLimitOf(h.id) || 0,
+    touchedLimit: false,
+  };
+  const income = () => f.salary + f.extras.reduce((s, x) => s + (x.amount || 0), 0);
+  // 생활비가 정해져 있지 않으면 목표 역산으로 채운다
+  if (!f.living && income()) f.living = Math.max(0, roundTo(Math.round(income() * (1 - f.goal)) * 0.85, LIVING_STEP));
+  if (!f.limit) f.limit = suggestHalfLimit(income(), f.goal, f.living);
+
+  const prevHalfSpecial = (() => {
+    const ph = halfOf(addDays(h.start, -1));
+    return sumAmount(state.txs.filter(t => isSpecial(t) && inRange(t.date, ph.start, ph.end)));
+  })();
+
+  const s = openSheet(`
+    <div class="sheet-head">
+      <button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">예산 짜기 · ${c.name} 주기</div><span style="width:44px"></span>
+    </div>
+    <div id="bp-body"></div>`, { full: true });
+  const el = s.el;
+
+  const paint = () => {
+    const inc = income();
+    const p = budgetPlan(inc, f.goal, f.living, f.limit);
+    const ch = budgetChoices(inc, f.goal, f.limit, bs.suggestion);
+    $('#bp-body', el).innerHTML = `
+      <div class="entry-body">
+        <h2 class="section-title" style="margin:8px 0 4px">수입</h2>
+        <div class="plan">
+          <div class="plan-row"><span class="k">급여 (세후)${inc0.estimated && f.salary === inc0.salary ? '<span class="est">기본값</span>' : ''}</span>
+            <span class="v num"><button class="link-btn" id="bp-salary" style="padding:0">${formatWon(f.salary)}원</button></span></div>
+          ${f.extras.map((x, i) => `<div class="extra-row"><span class="grow">${esc(x.name || '추가 수입')}</span>
+            <span class="num">${formatWon(x.amount)}원</span>
+            <button class="mini-btn" data-ex-del="${i}" aria-label="삭제">${ICON.close}</button></div>`).join('')}
+          <div class="plan-div"></div>
+          <div class="plan-row head"><span class="k">이번 주기 수입</span><span class="v num">${formatWon(inc)}원</span></div>
+        </div>
+        <button class="link-btn" id="bp-extra">+ 추가 수입 넣기</button>
+
+        <h2 class="section-title" style="margin:16px 0 4px">목표 저축률</h2>
+        <div class="seg" style="margin-top:0">
+          ${SAVE_GOALS.map(g => `<button data-goal="${g}" class="${Math.abs(f.goal - g) < 0.001 ? 'on' : ''}">${Math.round(g * 100)}%</button>`).join('')}
+          <button data-goal="custom" class="${SAVE_GOALS.some(g => Math.abs(f.goal - g) < 0.001) ? '' : 'on'}">직접</button>
+        </div>
+
+        <div class="plan">
+          <div class="plan-row head"><span class="k">쓸 수 있는 돈</span><span class="v num">${formatWon(p.spendable)}원</span></div>
+          <div class="plan-row"><span class="k">생활비 예산 (월)</span>
+            <span class="stepper"><button data-liv="-1">−</button><span class="v num">${formatWon(f.living)}</span><button data-liv="1">+</button></span></div>
+          <div class="plan-row"><span class="k">특별지출 (월)</span><span class="v num">${formatWon(p.specialMonthly)}원</span></div>
+          <div class="plan-row sub"><span class="k">→ 반기 한도</span><span class="v num">${formatWon(f.limit)}원</span></div>
+          <div class="plan-div"></div>
+          <div class="plan-row head ${p.ok ? '' : 'bad'}"><span class="k">남는 돈</span><span class="v num">${formatWon(p.rest)}원</span></div>
+        </div>
+        ${p.ok ? '' : `<div class="hint" style="color:var(--danger)">목표 저축률보다 ${formatWon(-p.rest)}원 더 쓰는 예산이에요. 저장은 되지만 실제 저축률은 ${pctText(p.rate)}가 돼요.</div>`}
+
+        <h2 class="section-title" style="margin:16px 0 4px">실적과 비교</h2>
+        <div class="plan">
+          ${bs.suggestion ? `<div class="plan-row sub"><span class="k">최근 ${bs.suggestion.count}개 주기 생활비 중앙값</span><span class="v num">${formatWon(bs.suggestion.median)}원</span></div>` : '<div class="plan-row sub"><span class="k">생활비 실적</span><span class="v">아직 끝난 주기가 없어요</span></div>'}
+          ${prevHalfSpecial ? `<div class="plan-row sub"><span class="k">지난 반기 특별지출</span><span class="v num">${formatWon(prevHalfSpecial)}원 (월 ${formatWon(Math.round(prevHalfSpecial / 6))})</span></div>` : '<div class="plan-row sub"><span class="k">지난 반기 특별지출</span><span class="v">기록이 없어요</span></div>'}
+          ${bs.suggestion ? `<div class="plan-div"></div><div class="plan-row sub ${f.living >= bs.suggestion.median ? 'good' : 'bad'}"><span class="k">생활비 예산 − 실적</span><span class="v num">${f.living - bs.suggestion.median >= 0 ? '+' : '−'}${formatWon(Math.abs(f.living - bs.suggestion.median))}원</span></div>` : ''}
+        </div>
+        <div class="dual">
+          <button data-pick-liv="${ch.fromGoal}" class="${f.living === ch.fromGoal ? 'on' : ''}">목표 역산<b class="num">${formatMan(ch.fromGoal)}</b></button>
+          ${ch.fromHistory !== null ? `<button data-pick-liv="${ch.fromHistory}" class="${f.living === ch.fromHistory ? 'on' : ''}">실적 기준<b class="num">${formatMan(ch.fromHistory)}</b></button>` : '<button disabled>실적 기준<b>-</b></button>'}
+        </div>
+
+        <h2 class="section-title" style="margin:16px 0 4px">이 예산대로 가면</h2>
+        <div class="plan">
+          <div class="plan-row head"><span class="k">매달 안 쓰는 돈</span><span class="v num">${formatWon(p.saved)}원</span></div>
+          <div class="plan-row ${p.ok ? 'good' : 'bad'}"><span class="k">저축률</span><span class="v num">${pctText(p.rate)}</span></div>
+          <div class="plan-row sub"><span class="k">연</span><span class="v num">${formatWon(roundTo(p.yearly, 1000))}원</span></div>
+        </div>
+        <button class="primary" id="bp-save" style="margin-top:14px" ${inc > 0 && f.living > 0 ? '' : 'disabled'}>${inc > 0 ? (f.living > 0 ? '예산 저장' : '생활비 예산을 정하세요') : '급여를 넣어 주세요'}</button>
+        <div class="hint">저장하면 ${c.name} 주기 생활비 예산과 ${h.label} 특별지출 한도가 같이 정해져요. 급여는 이 주기에만 저장돼요.</div>
+      </div>`;
+
+    // 목표율·생활비 조절
+    el.querySelectorAll('[data-goal]').forEach(b => b.onclick = async () => {
+      if (b.dataset.goal === 'custom') {
+        openPercentSheet(f.goal, v => { f.goal = v; f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); });
+        return;
+      }
+      f.goal = Number(b.dataset.goal);
+      f.limit = suggestHalfLimit(income(), f.goal, f.living);
+      paint();
+    });
+    el.querySelectorAll('[data-liv]').forEach(b => b.onclick = () => {
+      const next = f.living + Number(b.dataset.liv) * LIVING_STEP;
+      if (next < 0) return;
+      f.living = next;
+      f.limit = suggestHalfLimit(income(), f.goal, f.living);
+      paint();
+    });
+    el.querySelectorAll('[data-pick-liv]').forEach(b => b.onclick = () => {
+      f.living = Number(b.dataset.pickLiv);
+      f.limit = suggestHalfLimit(income(), f.goal, f.living);
+      paint();
+    });
+    // 급여·추가 수입
+    $('#bp-salary', el).onclick = () => openAmountSheet({
+      title: `${c.name} 주기 급여 (세후)`,
+      initial: f.salary,
+      hint: state.baseSalary ? `기본 급여 ${formatWon(state.baseSalary)}원 · 이 주기만 바뀌어요` : '처음 넣는 급여는 다음 주기 기본값이 돼요',
+      onSave: n => { f.salary = n; f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); },
+    });
+    $('#bp-extra', el).onclick = () => openExtraSheet(x => { f.extras.push(x); f.limit = suggestHalfLimit(income(), f.goal, f.living); paint(); });
+    el.querySelectorAll('[data-ex-del]').forEach(b => b.onclick = () => {
+      f.extras.splice(Number(b.dataset.exDel), 1);
+      f.limit = suggestHalfLimit(income(), f.goal, f.living);
+      paint();
+    });
+    // 저장
+    const save = $('#bp-save', el);
+    save.onclick = async () => {
+      if (save.disabled) return;
+      save.disabled = true;
+      const now = Date.now();
+      const budget = { cycleId: c.id, amount: f.living, suggested: bs.suggestion ? bs.suggestion.amount : null, confirmedAt: now };
+      const limit = { halfId: h.id, amount: f.limit, confirmedAt: now };
+      const incomeRec = { cycleId: c.id, salary: f.salary, extras: f.extras, editedAt: now };
+      try { await dbSavePlan(budget, limit, incomeRec); }
+      catch (e) { toast('저장하지 못했어요'); save.disabled = false; return; }
+      state.budgets[c.id] = budget;
+      state.halfLimits[h.id] = limit;
+      state.incomes[c.id] = incomeRec;
+      if (Math.abs(state.savingsGoal - f.goal) > 0.001) {
+        state.savingsGoal = f.goal;
+        await dbPut('meta', { key: 'savingsGoal', value: f.goal }).catch(() => {});
+      }
+      if (!state.baseSalary && f.salary > 0) {
+        state.baseSalary = f.salary;
+        await dbPut('meta', { key: 'baseSalary', value: f.salary }).catch(() => {});
+      }
+      s.close(); render(); toast('예산을 저장했어요');
+    };
+  };
+  paint();
+}
+
+/** 목표 저축률 직접 입력 (1% 단위) */
+function openPercentSheet(cur, onSave) {
+  let v = Math.round(cur * 100);
+  const s = openSheet(`
+    <div class="sheet-head"><button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">목표 저축률</div><span style="width:44px"></span></div>
+    <div class="amount-display num" id="pc-v"></div>
+    <div class="hint" style="text-align:center;margin:0 0 12px">수입에서 이 비율만큼은 쓰지 않는 것을 목표로 해요</div>
+    <div class="plan-row" style="justify-content:center">
+      <span class="stepper"><button data-p="-5">−</button><span class="v num" id="pc-s">${v}%</span><button data-p="5">+</button></span>
+    </div>
+    <button class="primary" id="pc-save" style="margin-top:14px">저장</button>`);
+  const el = s.el;
+  const paint = () => { $('#pc-v', el).innerHTML = `${v}<span class="won">%</span>`; $('#pc-s', el).textContent = `${v}%`; };
+  el.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+    v = Math.max(0, Math.min(90, v + Number(b.dataset.p)));
+    paint();
+  });
+  $('#pc-save', el).onclick = () => { onSave(v / 100); s.close(); };
+  paint();
+}
+
+/** 추가 수입 한 건 입력 */
+function openExtraSheet(onAdd) {
+  let name = '', amount = '';
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
+  const s = openSheet(`
+    <div class="sheet-head"><button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">추가 수입</div><span style="width:44px"></span></div>
+    <div class="amount-display num" id="ex-amt"></div>
+    <input id="ex-name" class="memo" placeholder="이름 (예: 성과급)" maxlength="20" autocomplete="off">
+    <div class="hint" style="text-align:center;margin:8px 0 12px">이번 주기 수입에 더해져요. 저축률 계산에도 들어가요.</div>
+    <div class="keypad">${keys.map(k => `<button class="key num" data-key="${k}">${k === 'back' ? ICON.del : k}</button>`).join('')}</div>
+    <button class="primary" id="ex-save" disabled>넣기</button>`);
+  const el = s.el, amtEl = $('#ex-amt', el), save = $('#ex-save', el);
+  const paint = () => {
+    const n = Number(amount || 0);
+    amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
+    amtEl.classList.toggle('zero', !n);
+    save.disabled = !n;
+  };
+  bindKeypad(el, k => { const nx = keypadInput(amount, k); if (nx !== amount) { amount = nx; paint(); } });
+  $('#ex-name', el).oninput = e => { name = e.target.value; };
+  save.onclick = () => { onAdd({ id: uid(), name: name.trim() || '추가 수입', amount: Number(amount) }); s.close(); };
+  paint();
 }
 
 /* =====================================================================
@@ -2041,6 +2841,7 @@ function render() {
   if (state.tab === 'home') renderHome();
   else if (state.tab === 'list') renderList();
   else if (state.tab === 'fixed') renderFixed();
+  else if (state.tab === 'goal') renderSpecial();
   else renderPlaceholder(state.tab);
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === state.tab));
 }
@@ -2268,7 +3069,8 @@ async function commitImport(fileName, rows, plan) {
   const fb = fallbackId();
   const recs = [];
   plan.record.forEach(x => {
-    const tx = makeImportTx(x, state.cats, state.threshold, fb, uid(), now);
+    // 가져온 내역도 날짜가 이벤트 기간 안이면 자동으로 묶는다 (v4.0.0). 확인 대기함에는 올리지 않는다
+    const tx = recomputeKind(withEvent(makeImportTx(x, state.cats, state.threshold, fb, uid(), now)), catMap(), state.threshold);
     recs.push({ tx, row: importRowRec(x, batch.id, 'done', tx.id) });
   });
   plan.pending.forEach(x => recs.push({ tx: null, row: importRowRec(x, batch.id, 'pending', null) }));
@@ -2369,6 +3171,7 @@ async function resolvePending(row, pick, catId, learn) {
     const cats = state.cats;
     const x = { id: row.id, r: row.raw, amount: row.amount, categoryName: (cats.find(c => c.id === catId) || {}).name };
     tx = makeImportTx(x, cats, state.threshold, fallbackId(), uid(), now, pick === 'special' ? 'special' : (row.reason === 'big-spend' ? 'living' : null));
+    tx = recomputeKind(withEvent(tx), catMap(), state.threshold);
     next.transactionId = tx.id;
     next.categoryName = x.categoryName;
   }
@@ -2403,8 +3206,11 @@ function openEntry(tx) {
     merchant: editing ? (tx.merchant || '') : '',
     kind: editing ? (tx.kind || 'living') : 'living',
     kindSource: editing ? (tx.kindSource || 'auto') : 'auto',
-    eventId: editing ? tx.eventId : null,
+    eventId: editing ? (tx.eventId || null) : null,
+    eventSource: editing ? (tx.eventSource || 'auto') : 'auto',
   };
+  // 새 내역은 날짜로 이벤트를 찾아 자동으로 묶는다 (v4.0.0)
+  if (!editing) f.eventId = eventIdFor({ date: f.date, eventSource: 'auto' }, state.events);
   const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
   const s = openSheet(`
     <div class="sheet-head">
@@ -2416,6 +3222,7 @@ function openEntry(tx) {
       <label class="date-chip"><span id="e-date-label"></span> ▾<input type="date" id="e-date" value="${f.date}"></label>
       <div class="amount-display num" id="e-amt"></div>
       <input id="e-merchant" class="memo" placeholder="어디서 썼나요? (선택)" maxlength="40" value="${esc(f.merchant)}" autocomplete="off">
+      <div id="e-ev"></div>
       ${editing ? `<div class="seg" id="e-kind"><button data-kind="living">생활비</button><button data-kind="special">특별지출</button></div>` : ''}
       <div class="cat-grid" id="e-cats" style="grid-template-columns:repeat(${Math.max(5, Math.ceil(state.cats.length / 2))},70px)">
         ${state.cats.map(c => `<button class="cat-opt" data-cat="${c.id}"><div class="cat-ico" style="${icoStyle(c)}">${esc(c.emoji)}</div>${esc(c.name)}</button>`).join('')}
@@ -2430,6 +3237,24 @@ function openEntry(tx) {
   const signed = () => (f.neg ? -Number(f.amount || 0) : Number(f.amount || 0));
 
   const shownKind = () => resolveKind({ amount: signed(), categoryId: f.cat, eventId: f.eventId, kind: f.kind, kindSource: f.kindSource, method: editing ? tx.method : 'manual' }, catMap(), state.threshold).kind;
+  // 이벤트 묶기 — 이 건만 빼거나 다시 넣을 수 있다 (v4.0.0)
+  const paintEvent = () => {
+    const box = $('#e-ev', el);
+    const owner = eventForDate(state.events, f.date);
+    const cur = f.eventId ? eventById(f.eventId) : null;
+    const ev = cur || owner;
+    if (!ev) { box.innerHTML = ''; return; }
+    const on = !!f.eventId;
+    box.innerHTML = `<div class="switch-row">
+      <div class="grow">🧳 ${esc(ev.name)}에 넣기<small>${on ? '이 지출은 항상 특별지출로 잡혀요' : '이 건만 빼 뒀어요'}</small></div>
+      <label class="switch"><input type="checkbox" id="e-ev-on" ${on ? 'checked' : ''}><span></span></label>
+    </div>`;
+    $('#e-ev-on', el).onchange = e2 => {
+      if (e2.target.checked) { f.eventId = (owner || ev).id; f.eventSource = 'auto'; }
+      else { f.eventId = null; f.eventSource = 'manual'; }
+      paint();
+    };
+  };
   const paint = () => {
     const n = Number(f.amount || 0);
     const k = shownKind();
@@ -2437,6 +3262,7 @@ function openEntry(tx) {
     amtEl.innerHTML = `${formatWon(signed())}<span class="won">원</span>`;
     amtEl.classList.toggle('zero', !n);
     $('#e-date-label', el).textContent = dateLabel(f.date);
+    paintEvent();
     el.querySelectorAll('[data-cat]').forEach(b => b.classList.toggle('on', b.dataset.cat === f.cat));
     saveBtn.disabled = !(n > 0 && f.cat);
     saveBtn.textContent = !n ? '금액을 입력하세요' : !f.cat ? '카테고리를 선택하세요' : '저장';
@@ -2454,7 +3280,12 @@ function openEntry(tx) {
     f.kind = b.dataset.kind; f.kindSource = 'manual'; paint();
   });
   const dateIn = $('#e-date', el);
-  dateIn.onchange = () => { if (dateIn.value) { f.date = dateIn.value; paint(); } };
+  dateIn.onchange = () => {
+    if (!dateIn.value) return;
+    f.date = dateIn.value;
+    if (f.eventSource !== 'manual') f.eventId = eventIdFor({ date: f.date, eventSource: 'auto' }, state.events);
+    paint();
+  };
   $('#e-merchant', el).oninput = e => { f.merchant = e.target.value; };
 
   if (f.cat) requestAnimationFrame(() => { const on = el.querySelector(`[data-cat="${f.cat}"]`); on && on.scrollIntoView({ inline: 'center', block: 'nearest' }); });
@@ -2471,6 +3302,7 @@ function openEntry(tx) {
       const rec = {
         ...base, amount: signed(), categoryId: f.cat, date: f.date,
         merchant: f.merchant.trim(), kind: f.kind, kindSource: f.kindSource, updatedAt: now,
+        eventId: f.eventId, eventSource: f.eventSource,
       };
       const r = resolveKind(rec, catMap(), state.threshold);
       rec.kind = r.kind; rec.kindSource = r.kindSource;
@@ -2511,6 +3343,11 @@ function openSettings() {
       <button class="list-row" id="s-budget"><span class="grow">이번 주기 생활비 예산</span><span class="val num" id="s-budget-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-threshold"><span class="grow">특별지출 기준 금액</span><span class="val num" id="s-threshold-val"></span>${ICON.chev}</button>
       <div class="hint">기준 금액 이상을 입력하면 특별지출로 분류할지 한 번 물어봐요. 파일에서 가져올 때도 이 금액 이상은 확인 대기함으로 올려서 물어봐요.</div></section>
+    <section class="section"><h2 class="section-title">수입 · 목표</h2>
+      <button class="list-row" id="s-salary"><span class="grow">기본 급여 (세후)</span><span class="val num" id="s-salary-val"></span>${ICON.chev}</button>
+      <button class="list-row" id="s-goal"><span class="grow">목표 저축률</span><span class="val num" id="s-goal-val"></span>${ICON.chev}</button>
+      <button class="list-row" id="s-limit"><span class="grow">이번 반기 특별지출 한도</span><span class="val num" id="s-limit-val"></span>${ICON.chev}</button>
+      <div class="hint">기본 급여를 바꾸면 <b>앞으로의 주기</b> 기본값만 바뀌어요. 지나간 주기는 그대로 남아요. 이번 주기 급여만 고치려면 특별지출 탭의 '예산 짜기'에서 바꾸세요.</div></section>
     <section class="section"><h2 class="section-title">가져오기</h2>
       <button class="list-row" id="s-pending"><span class="grow">확인할 내역</span><span class="val num" id="s-pending-val"></span>${ICON.chev}</button>
       <button class="list-row" id="s-methods"><span class="grow">제외할 결제수단</span><span class="val num" id="s-methods-val"></span>${ICON.chev}</button>
@@ -2535,6 +3372,10 @@ function openSettings() {
     $('#s-rules-val', el).textContent = `${Object.keys(state.rules).length}개`;
     $('#s-batches-val', el).textContent = `${state.batches.length}회`;
     $('#s-every-val', el).textContent = state.importEvery ? `${state.importEvery}일마다` : '안 함';
+    $('#s-salary-val', el).textContent = state.baseSalary ? `${formatWon(state.baseSalary)}원` : '미설정';
+    $('#s-goal-val', el).textContent = pctText(state.savingsGoal);
+    const hl = halfLimitOf(halfOf(todayYMD()).id);
+    $('#s-limit-val', el).textContent = hl ? `${formatWon(hl)}원` : '미설정';
   };
   const paintCats = () => {
     $('#s-cats', el).innerHTML = state.cats.map((c, i) => `
@@ -2565,6 +3406,25 @@ function openSettings() {
     hint: '이미 저장된 내역에는 적용되지 않아요',
     onSave: async n => { state.threshold = n; await dbPut('meta', { key: 'specialThreshold', value: n }); paintTop(); toast('기준 금액을 저장했어요'); },
   });
+  $('#s-salary', el).onclick = () => openAmountSheet({
+    title: '기본 급여 (세후)',
+    initial: state.baseSalary,
+    hint: '앞으로의 주기에 자동으로 들어가는 금액이에요. 지나간 주기는 바뀌지 않아요',
+    onSave: async n => { state.baseSalary = n; await dbPut('meta', { key: 'baseSalary', value: n }); paintTop(); toast('기본 급여를 저장했어요'); },
+  });
+  $('#s-goal', el).onclick = () => openPercentSheet(state.savingsGoal, async v => {
+    state.savingsGoal = v; await dbPut('meta', { key: 'savingsGoal', value: v }).catch(() => {});
+    paintTop(); toast('목표 저축률을 저장했어요');
+  });
+  $('#s-limit', el).onclick = () => {
+    const h = halfOf(todayYMD());
+    openAmountSheet({
+      title: `${h.label} 특별지출 한도`,
+      initial: halfLimitOf(h.id) || 0,
+      hint: '반기 단위예요. 급여와 목표 저축률로 계산하려면 특별지출 탭의 \'예산 짜기\'를 쓰세요',
+      onSave: async n => { await saveHalfLimit(h.id, n); paintTop(); toast('한도를 저장했어요'); },
+    });
+  };
   $('#s-pending', el).onclick = () => { if (pendingRows().length) openPending(); else toast('확인할 내역이 없어요'); };
   $('#s-every', el).onclick = () => openEveryPicker(paintTop);
   $('#s-methods', el).onclick = () => openMethodPicker(paintTop);
@@ -2782,6 +3642,14 @@ async function init() {
   if (cn) state.chargeNames = cn.value;
   const ie = await dbGet('meta', 'importEvery');
   if (ie) state.importEvery = ie.value;
+  // v4.0.0
+  state.events = await dbAll('events');
+  (await dbAll('halfLimits')).forEach(r => { state.halfLimits[r.halfId] = r; });
+  (await dbAll('cycleIncomes')).forEach(r => { state.incomes[r.cycleId] = r; });
+  const bsal = await dbGet('meta', 'baseSalary');
+  if (bsal) state.baseSalary = bsal.value || 0;
+  const sg2 = await dbGet('meta', 'savingsGoal');
+  if (sg2 && sg2.value) state.savingsGoal = sg2.value;
   const inst = await dbGet('meta', 'installedAt');
   const earliest = state.txs.map(t => t.date).sort()[0];
   state.installYMD = inst ? toYMD(new Date(inst.value)) : (earliest || todayYMD());
@@ -2792,6 +3660,7 @@ async function init() {
     if (document.hidden) return;
     if (document.querySelector('.sheet,.page')) return;
     state.homeRef = null; // 앱을 다시 열면 언제나 이번 주기부터
+    state.halfRef = null; // 특별지출도 이번 반기부터
     render();
   });
 }
