@@ -493,7 +493,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '6.0.0';
+const APP_VERSION = '6.0.1';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -2063,14 +2063,6 @@ function renderHome() {
   const hlOver = hl0 ? livingOverrun(state.txs, state.budgets, s.half, today).over : 0;
   const hs = halfStats(state.txs, state.events, state.cats, ref, hl0, hlOver);
 
-  let delta = '지난 주기 기록이 없어요';
-  if (s.change !== null) {
-    const diff = s.living - s.prevSame;
-    const base = `지난 주기 ${isCurrent ? '같은 기간' : '전체'}보다`;
-    delta = Math.abs(diff) < 1000 ? `${base} 비슷하게 썼어요`
-      : `${base} <span class="num">${formatMan(Math.abs(diff))}</span> ${diff > 0 ? '더' : '덜'} 썼어요`;
-  }
-
   // 오른쪽 위: 이번 주기는 예산, 지난 주기는 기간 일수
   const headRight = isCurrent
     ? (bNow.provisional ? `<span class="tag">${bNow.plan ? '계획' : '제안'}</span>` : budget ? `<span class="num">예산 ${formatMan(budget)}</span>` : '')
@@ -2083,7 +2075,7 @@ function renderHome() {
   } else if (isCurrent && p) {
     bottom = p.level === 'over'
       ? `<div class="pace"><b>초과</b> · 예산보다 <span class="num">${formatWon(s.living - budget)}원</span> 더 썼어요</div>`
-      : `<div class="pace"><b>${p.status}</b> · 남은 ${p.daysLeft}일 하루 <span class="num">${formatWon(p.daily)}원</span></div>`;
+      : `<div class="pace"><b>${p.status}</b> · 남은 ${p.daysLeft}일, 하루 <span class="num">${formatWon(p.daily)}원</span> 쓸 수 있어요</div>`;
   } else if (isCurrent) {
     bottom = `<div class="pace"><span class="sub">예산을 정하면 페이스를 보여드려요 · ${s.daysLeft}일 남음</span></div>`;
   } else if (budget) {
@@ -2104,12 +2096,11 @@ function renderHome() {
         <div class="legend"><span><i></i>누적 지출</span>${budget ? '<span><i class="dash"></i>예산 페이스</span>' : ''}</div>
       </div>
       ${bottom}
-      <div class="delta-line">${delta}</div>
     </section>`;
 
   const spCls = hs.limit ? (hs.level === 'over' ? 'neg' : hs.level === 'warn' ? 'warn' : '') : '';
   const spSub = hs.limit
-    ? `${hlOver ? '줄어든 한도' : '한도'} ${formatMan(Math.max(0, hs.effLimit))} · ${hs.pct}%${hs.planned.total ? ` · 예정 포함 ${hs.projectedPct}%` : ''}`
+    ? `${hlOver ? '쓸 수 있는 한도' : '한도'} ${formatMan(Math.max(0, hs.effLimit))} · ${hs.pct}%${hs.planned.total ? ` · 예정 포함 ${hs.projectedPct}%` : ''}`
     : `${shortDate(s.half.start)} – ${shortDate(s.half.end)} · 한도 없음`;
 
   $('#view').innerHTML = `
@@ -2125,10 +2116,11 @@ function renderHome() {
       ${ICON.chev}</div>` : ''}
     ${isCurrent ? budgetCardHTML(bNow) : ''}
     ${gauge}
-    <div class="stats one">
+    <div class="stats two">
       <button class="stat stat-link" id="go-special"><div class="k">특별지출 · ${s.half.label}</div>
         <div class="v num ${spCls}">${formatWon(hs.spent)}원</div>
         <div class="k2 num">${spSub}</div>${ICON.chev}</button>
+      <div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div></div>
     </div>
     <section class="section">
       <h2 class="section-title">생활비 카테고리</h2>
@@ -2719,13 +2711,6 @@ function halfNavHTML(h, canPrev, canNext) {
   </span>`;
 }
 
-/** 지난 반기 비교 한 줄. 금액만 적는다 (v6.0.0) */
-function prevLine(s, isCurrent) {
-  if (s.change === null) return '';
-  const d = s.spent - s.prevSame;
-  return `<div class="delta-line">지난 반기 ${isCurrent ? '같은 시점' : '전체'}보다 <span class="num">${formatMan(Math.abs(d))}</span> ${d > 0 ? '더' : '덜'} 썼어요</div>`;
-}
-
 function renderSpecial() {
   const today = todayYMD();
   const ref = state.halfRef || today;
@@ -2752,7 +2737,7 @@ function renderSpecial() {
           <div class="plan-row sub"><span class="k">정한 한도</span><span class="v num">${formatWon(limit)}원</span></div>
           ${overLines.map(x => `<div class="plan-row sub"><span class="k">생활비 초과 · ${x.cycle.name} 주기</span><span class="v num" style="color:var(--danger)">−${formatWon(x.diff)}원</span></div>`).join('')}
           <div class="plan-div"></div>
-          <div class="plan-row"><span class="k">줄어든 한도</span><span class="v num">${formatWon(eff)}원</span></div>
+          <div class="plan-row"><span class="k">쓸 수 있는 한도</span><span class="v num">${formatWon(eff)}원</span></div>
         </div>` : ''}
         <div class="hl-bar">${s.planned.total ? `<u style="left:${barPct}%;width:${Math.max(0, planPct - barPct)}%"></u>` : ''}<i style="width:${barPct}%"></i></div>
         <div class="hl-left">남은 한도 <b class="num">${formatWon(Math.max(0, s.left))}원</b>${s.left < 0 ? ` <span class="num" style="color:var(--danger)">(${formatWon(s.left)}원 초과)</span>` : ''}</div>
@@ -2762,13 +2747,11 @@ function renderSpecial() {
           <div class="plan-div"></div>
           ${s.planned.items.map(x => `<div class="plan-row sub"><span class="k">${esc(x.event.name)} ${shortDate(x.event.start)}–${shortDate(x.event.end)}</span><span class="v num">예상 ${formatWon(x.rest)}원</span></div>`).join('')}
         </div>` : ''}
-        ${prevLine(s, isCurrent)}
       </section>`
     : `<section class="section">
         <div class="gauge-head">${halfNavHTML(h, h.start > first.start, !isCurrent)}</div>
         <div class="gauge-amt num">${formatWon(s.spent)}<small>원</small></div>
         <div class="gauge-of num">${shortDate(h.start)} – ${shortDate(h.end)}</div>
-        ${prevLine(s, isCurrent)}
         <div class="delta-line">한도를 정하면 남은 한도와 예정까지 같이 보여드려요.
           <br><button class="link-btn" data-go-budget>예산 탭에서 정하기</button></div>
       </section>`;
@@ -3444,7 +3427,7 @@ function openPending() {
         </div>
         <div class="switch-row" style="margin-top:8px">
           <div class="grow">앞으로 '${esc(r.content)}'는 자동으로<small>같은 이름이 또 나오면 이번 선택대로 처리해요</small></div>
-          <label class="switch"><input type="checkbox" id="pd-learn" checked><span></span></label>
+          <label class="switch"><input type="checkbox" id="pd-learn"><span></span></label>
         </div>
         <button class="primary" id="pd-save" style="margin-top:8px" disabled>선택하세요</button>
         <div class="pend-count">${i + 1} / ${queue.length}</div>
