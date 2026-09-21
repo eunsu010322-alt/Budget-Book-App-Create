@@ -493,7 +493,7 @@ button.list-row:active{opacity:.6}
 
 <script>
 'use strict';
-const APP_VERSION = '6.0.1';
+const APP_VERSION = '7.0.0';
 
 /* =====================================================================
    계산 로직 (화면과 분리 — 테스트 대상)
@@ -1489,6 +1489,30 @@ function savingTrend(txs, incomes, today, baseSalary, sinceYMD, n = 3) {
   };
 }
 
+/** 저축 목표(금액) 진행 상황 (v7.0.0). 목표 저축률(%)과는 별개로, '언제까지 얼마'를 직접 정해서 쫓는 용도.
+ *  target = { amount, dueDate, startDate } — startDate는 목표를 세운 날 (그 전에 모은 돈은 세지 않는다)
+ *  반기 리포트와 같은 원칙: 끝난 주기의 저축만 더한다. 진행 중인 주기는 그 주기가 끝나야 반영된다 (중간 숫자로 흔들리지 않게) */
+function savingsProgress(txs, incomes, baseSalary, target, today) {
+  if (!target || !(target.amount > 0)) return null;
+  const floor = target.startDate || today;
+  const out = [];
+  let c = prevCycle(cycleOf(today));
+  while (c.start >= floor) {
+    const r = cycleSaving(txs, incomes, c.id, baseSalary);
+    if (r.income.total > 0) out.push(r);
+    c = prevCycle(c);
+  }
+  const saved = Math.max(0, out.reduce((s, r) => s + r.saved, 0));
+  return {
+    amount: target.amount, dueDate: target.dueDate || null, saved,
+    left: Math.max(0, target.amount - saved),
+    pct: Math.max(0, Math.min(100, Math.round(saved / target.amount * 100))),
+    done: saved >= target.amount,
+    daysLeft: target.dueDate ? diffDays(today, target.dueDate) : null,
+    cycles: out.length,
+  };
+}
+
 /* ---- 예산 짜기 ----
    목표 저축률이 '쓸 수 있는 돈'을 먼저 정하고, 그 안에서 생활비와 특별지출을 나눈다.
    생활비를 올리면 특별지출 한도가 줄어든다. */
@@ -1777,6 +1801,8 @@ const state = {
   baseSalary: 0, savingsGoal: 0.4, halfRef: null, livingPlan: null,
   // v5.0.0
   budgetRef: null,
+  // v7.0.0
+  savingsTarget: null,
 };
 const SAVE_GOALS = [0.4, 0.45, 0.5];
 const $ = (s, el = document) => el.querySelector(s);
@@ -2062,6 +2088,8 @@ function renderHome() {
   const hl0 = halfLimitOf(s.half.id);
   const hlOver = hl0 ? livingOverrun(state.txs, state.budgets, s.half, today).over : 0;
   const hs = halfStats(state.txs, state.events, state.cats, ref, hl0, hlOver);
+  // 저축 목표(금액) 진행률 — 목표 저축률(%)과 별개, 설정에서 정한다 (v7.0.0)
+  const tp = savingsProgress(state.txs, state.incomes, state.baseSalary, state.savingsTarget, today);
 
   // 오른쪽 위: 이번 주기는 예산, 지난 주기는 기간 일수
   const headRight = isCurrent
@@ -2122,6 +2150,11 @@ function renderHome() {
         <div class="k2 num">${spSub}</div>${ICON.chev}</button>
       <div class="stat"><div class="k">오늘 쓴 돈</div><div class="v num">${formatWon(s.today)}원</div></div>
     </div>
+    ${tp ? `<section class="section pressable" id="go-target">
+      <div class="gauge-head"><span class="section-title" style="margin:0">저축 목표</span>${tp.dueDate ? `<span class="num">${tp.daysLeft >= 0 ? `D-${tp.daysLeft}` : `${shortDate(tp.dueDate)} 지남`}</span>` : ''}</div>
+      <div class="hl-bar"><i style="width:${tp.pct}%"></i></div>
+      <div class="hl-left num">${formatMan(tp.saved)} <span style="color:var(--faint)">/ ${formatMan(tp.amount)}</span> <b>· ${tp.pct}%</b></div>
+    </section>` : ''}
     <section class="section">
       <h2 class="section-title">생활비 카테고리</h2>
       <div id="cat-section">${catSectionHTML(s)}</div>
@@ -2140,6 +2173,8 @@ function renderHome() {
   const gi = $('#go-import');
   if (gi) gi.onclick = () => openImport();
   $('#go-special').onclick = () => goSpecial(ref);
+  const gt = $('#go-target');
+  if (gt) gt.onclick = () => openSavingsTargetSheet(() => {});
   $('#view').querySelector('[data-go-list]').onclick = () => goList({ cycleId: c.id });
   $('#view').querySelectorAll('[data-cyc]').forEach(b2 => b2.onclick = () => {
     if (b2.disabled) return;
@@ -3129,6 +3164,48 @@ function openExtraSheet(onAdd) {
   paint();
 }
 
+/** 저축 목표(금액) 설정 · 수정 · 삭제 (v7.0.0). 목표 저축률(%)과는 별개로 '언제까지 얼마'를 직접 정한다.
+ *  startDate는 처음 저장한 날짜로 고정 — 다시 열어 금액·날짜만 고쳐도 진행률 계산 기준은 안 바뀐다 */
+function openSavingsTargetSheet(done) {
+  const editing = state.savingsTarget;
+  let amount = editing ? String(editing.amount) : '';
+  let due = editing ? editing.dueDate : '';
+  const keys = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '00', '0', 'back'];
+  const s = openSheet(`
+    <div class="sheet-head"><button class="icon-btn" data-close aria-label="닫기">${ICON.close}</button>
+      <div class="title">저축 목표</div>
+      ${editing ? '<button class="text-btn danger" id="tg-del">삭제</button>' : '<span style="width:44px"></span>'}
+    </div>
+    <div class="amount-display num" id="tg-amt"></div>
+    <div class="field"><label>목표 날짜</label><input type="date" id="tg-due" value="${esc(due)}"></div>
+    <div class="hint" style="text-align:center;margin:8px 0 12px">오늘부터 목표 날짜까지 끝난 주기의 저축을 더해서 진행률을 보여드려요. 목표 저축률(%)과는 별개예요.</div>
+    <div class="keypad">${keys.map(k => `<button class="key num" data-key="${k}">${k === 'back' ? ICON.del : k}</button>`).join('')}</div>
+    <button class="primary" id="tg-save" disabled>저장</button>`);
+  const el = s.el, amtEl = $('#tg-amt', el), save = $('#tg-save', el);
+  const paint = () => {
+    const n = Number(amount || 0);
+    amtEl.innerHTML = `${formatWon(n)}<span class="won">원</span>`;
+    amtEl.classList.toggle('zero', !n);
+    save.disabled = !n || !due;
+  };
+  bindKeypad(el, k => { const nx = keypadInput(amount, k); if (nx !== amount) { amount = nx; paint(); } });
+  $('#tg-due', el).onchange = e => { due = e.target.value; paint(); };
+  save.onclick = async () => {
+    if (save.disabled) return;
+    const target = { amount: Number(amount), dueDate: due, startDate: editing ? editing.startDate : todayYMD() };
+    state.savingsTarget = target;
+    await dbPut('meta', { key: 'savingsTarget', value: target });
+    s.close(); done(); if (state.tab === 'home') render(); toast('저축 목표를 저장했어요');
+  };
+  const delBtn = $('#tg-del', el);
+  if (delBtn) delBtn.onclick = async () => {
+    state.savingsTarget = null;
+    await dbDel('meta', 'savingsTarget');
+    s.close(); done(); if (state.tab === 'home') render(); toast('저축 목표를 지웠어요');
+  };
+  paint();
+}
+
 /* =====================================================================
    탭 전환
    ===================================================================== */
@@ -3642,7 +3719,9 @@ function openSettings() {
     <div class="topbar"><button class="icon-btn" data-back aria-label="뒤로">${ICON.back}</button><h1 style="flex:1;margin-left:4px">설정</h1></div>
     <section class="section"><h2 class="section-title">돈 계획</h2>
       <button class="list-row" id="s-plan"><span class="grow">급여 · 목표 저축률 · 예산</span><span class="val">예산 탭</span>${ICON.chev}</button>
-      <div class="hint">급여, 목표 저축률, 생활비 예산, 특별지출 한도는 예산 탭의 '예산 짜기'에서 한 번에 정해요.</div></section>
+      <div class="hint">급여, 목표 저축률, 생활비 예산, 특별지출 한도는 예산 탭의 '예산 짜기'에서 한 번에 정해요.</div>
+      <button class="list-row" id="s-target"><span class="grow">저축 목표</span><span class="val num" id="s-target-val"></span>${ICON.chev}</button>
+      <div class="hint">'언제까지 얼마'를 정해 두면 홈 화면에서 진행률을 보여드려요. 목표 저축률(%)과는 별개예요.</div></section>
     <section class="section"><h2 class="section-title">분류 기준</h2>
       <button class="list-row" id="s-threshold"><span class="grow">특별지출 기준 금액</span><span class="val num" id="s-threshold-val"></span>${ICON.chev}</button>
       <div class="hint">기준 금액 이상을 입력하면 특별지출로 분류할지 한 번 물어봐요. 파일에서 가져올 때도 이 금액 이상은 확인 대기함으로 올려서 물어봐요.</div></section>
@@ -3668,6 +3747,7 @@ function openSettings() {
     $('#s-rules-val', el).textContent = `${Object.keys(state.rules).length}개`;
     $('#s-batches-val', el).textContent = `${state.batches.length}회`;
     $('#s-every-val', el).textContent = state.importEvery ? `${state.importEvery}일마다` : '안 함';
+    $('#s-target-val', el).textContent = state.savingsTarget ? `${formatMan(state.savingsTarget.amount)}` : '안 함';
   };
   const paintCats = () => {
     $('#s-cats', el).innerHTML = state.cats.map((c, i) => `
@@ -3687,6 +3767,7 @@ function openSettings() {
     });
   };
   $('#s-plan', el).onclick = () => { pg.close(); setTimeout(() => switchTab('budget'), 60); };
+  $('#s-target', el).onclick = () => openSavingsTargetSheet(paintTop);
   $('#s-threshold', el).onclick = () => openAmountSheet({
     title: '특별지출 기준 금액',
     initial: state.threshold,
@@ -3920,6 +4001,8 @@ async function init() {
   if (sg2 && sg2.value) state.savingsGoal = sg2.value;
   const lp = await dbGet('meta', 'livingPlan');
   if (lp && lp.value) state.livingPlan = lp.value;
+  const st1 = await dbGet('meta', 'savingsTarget');
+  if (st1 && st1.value) state.savingsTarget = st1.value;
   // 실적(생활비 중앙값·저축률)을 셀 때 어디까지 거슬러 올라갈지 정하는 기준선.
   // 설치일만 쓰면 파일로 가져온 설치 이전 주기가 전부 빠진다 (v4.0.1에서 고침).
   // 설치일과 가장 이른 내역 날짜 중 '이른 쪽'을 쓴다.
